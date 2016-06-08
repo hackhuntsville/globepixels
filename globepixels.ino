@@ -1,4 +1,5 @@
 #include <Adafruit_NeoPixel.h>
+#include <Wire.h>
 
 #ifdef __AVR__
   #include <avr/power.h>
@@ -35,12 +36,20 @@ sstate_t s = S_NOTOUCH;
 #define S_RAINBOW_SNAKE_LENGTH 15
 
 void setup() {
-  
-  Serial.begin(38400);
-  pixels.begin();
 
+  pinMode(13, OUTPUT); 
+
+  Serial.begin(38400);
+  Serial.println("#globepixels coming up");
+
+  pixels.begin();
   g = G_RAINBOW;
   s = S_RAIN;
+  Serial.println("#leds up");
+  
+  Wire.begin(8);
+  Wire.onReceive(handleWire);
+  Serial.println("#wire up");
   
 }
 
@@ -188,10 +197,23 @@ void runStrip() {
   }
 }
 
+void handleWire(int count) {
+  Serial.println("#Got i2c");
+  while (0 < Wire.available()) {
+    char c = Wire.read(); 
+    Serial.print(c);
+  }
+  Serial.println();
+}
+
 void loop() {
-  
+
+  digitalWrite(13,LOW); //start of LED processing
+
   runGlobes();
   runStrip();
+
+  digitalWrite(13,HIGH); //tell the user we're done
 
   if ( Serial.peek() == -1 ) {
     //do nothing. There is nothing to read
