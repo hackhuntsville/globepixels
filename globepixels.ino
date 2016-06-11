@@ -13,6 +13,7 @@
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
+long lastFrame;
 uint32_t globes[GLOBE_COUNT];
 
 typedef enum {
@@ -50,6 +51,9 @@ void setup() {
   Wire.begin(8);
   Wire.onReceive(handleWire);
   Serial.println("#wire up");
+
+  lastFrame = millis();
+  Serial.print("#up at "); Serial.println(lastFrame);
   
 }
 
@@ -126,7 +130,7 @@ void runS_RAINBOW() {
   
   s_snake_offset++;
 
-  delay(50);
+  //delay(50);
 
 }
 void runS_BLANK() {
@@ -153,7 +157,7 @@ void runS_RAIN() {
     pixels.setPixelColor(random(0,NUMPIXELS), pixels.Color(255,255,255));
   }
   
-  delay(40);
+  //delay(40);
 }
 void runS_PAPARAZZI() {
   runS_BLANK();
@@ -162,7 +166,7 @@ void runS_PAPARAZZI() {
     //we do
     pixels.setPixelColor(random(0,NUMPIXELS), pixels.Color(255,255,255));
   }
-  delay(random(75,100));
+  //delay(random(75,100));
 }
 uint32_t s_color = pixels.Color(80,141,172);
 void runS_COLOR() {
@@ -208,11 +212,17 @@ void handleWire(int count) {
 
 void loop() {
 
+  Serial.print("### BEGIN FRAME ### "); Serial.println(millis());
+  
+
   digitalWrite(13,LOW); //start of LED processing
 
+  Serial.print("#begin globes at "); Serial.println(millis());
   runGlobes();
+  Serial.print("#begin strip at "); Serial.println(millis());
   runStrip();
-
+  
+  Serial.print("#begin other at "); Serial.println(millis());
   digitalWrite(13,HIGH); //tell the user we're done
 
   if ( Serial.peek() == -1 ) {
@@ -245,6 +255,7 @@ void loop() {
   else if ( Serial.peek() == (byte)'P' ) { s=S_PAPARAZZI; Serial.read(); }
   else { Serial.print((char)Serial.read()); Serial.println("?"); }
   
+  Serial.print("#begin write at "); Serial.println(millis());
   writeGlobes();
   pixels.show(); // This sends the updated pixel color to the hardware.
     
