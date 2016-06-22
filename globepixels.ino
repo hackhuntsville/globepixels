@@ -10,10 +10,11 @@
 #define GLOBE_SIZE     2   //How many leds are inside of one globe
 #define GLOBE_SPACING  10   //this minus GLOBE_SIZE equals the amount of LEDs between globes
 #define GLOBE_COUNT    30  //just to save RAM - we should calculate this on the fly though
+#define FRAMERATE      30  //how many frames per second to we ideally want to run
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
-long lastFrame;
+unsigned long lastFrame;
 uint32_t globes[GLOBE_COUNT];
 
 typedef enum {
@@ -212,18 +213,26 @@ void handleWire(int count) {
 
 void loop() {
 
-  Serial.print("### BEGIN FRAME ### "); Serial.println(millis());
+  if ( (millis() - (1000/FRAMERATE)) > lastFrame ) {
+    lastFrame = millis();
+    
+    Serial.print("### BEGIN FRAME ### "); Serial.println(lastFrame);
   
+    digitalWrite(13,LOW); //start of LED processing
 
-  digitalWrite(13,LOW); //start of LED processing
-
-  Serial.print("#begin globes at "); Serial.println(millis());
-  runGlobes();
-  Serial.print("#begin strip at "); Serial.println(millis());
-  runStrip();
+    //Serial.print("#begin globes at "); Serial.println(millis());
+    runGlobes();
+    //Serial.print("#begin strip at "); Serial.println(millis());
+    runStrip();
   
-  Serial.print("#begin other at "); Serial.println(millis());
-  digitalWrite(13,HIGH); //tell the user we're done
+    //Serial.print("#begin other at "); Serial.println(millis());
+    digitalWrite(13,HIGH); //tell the user we're done
+  
+    //Serial.print("#begin write at "); Serial.println(millis());
+    writeGlobes();
+    pixels.show(); // This sends the updated pixel color to the hardware.
+
+  }
 
   if ( Serial.peek() == -1 ) {
     //do nothing. There is nothing to read
@@ -254,10 +263,6 @@ void loop() {
   else if ( Serial.peek() == (byte)'A' ) { s=S_RAIN; Serial.read(); }
   else if ( Serial.peek() == (byte)'P' ) { s=S_PAPARAZZI; Serial.read(); }
   else { Serial.print((char)Serial.read()); Serial.println("?"); }
-  
-  Serial.print("#begin write at "); Serial.println(millis());
-  writeGlobes();
-  pixels.show(); // This sends the updated pixel color to the hardware.
     
 }
 
