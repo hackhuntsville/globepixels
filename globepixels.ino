@@ -8,13 +8,16 @@
 #define PIN            8
 #define NUMPIXELS      300
 #define GLOBE_SIZE     2   //How many leds are inside of one globe
-#define GLOBE_SPACING  10   //this minus GLOBE_SIZE equals the amount of LEDs between globes
+#define GLOBE_SPACING  10  //this minus GLOBE_SIZE equals the amount of LEDs between globes
 #define GLOBE_COUNT    30  //just to save RAM - we should calculate this on the fly though
 #define FRAMERATE      30  //how many frames per second to we ideally want to run
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 unsigned long lastFrame;
+unsigned long lastCleanup;
+unsigned long frameCount;
+unsigned long sloshCount;
 uint32_t globes[GLOBE_COUNT];
 
 typedef enum {
@@ -53,7 +56,7 @@ void setup() {
   Wire.onReceive(handleWire);
   Serial.println("#wire up");
 
-  lastFrame = millis();
+  lastFrame = millis(); lastCleanup = millis(); frameCount = 0; sloshCount = 0;
   Serial.print("#up at "); Serial.println(lastFrame);
   
 }
@@ -213,10 +216,20 @@ void handleWire(int count) {
 
 void loop() {
 
-  if ( (millis() - (1000/FRAMERATE)) > lastFrame ) {
-    lastFrame = millis();
+  if ( (millis() - lastCleanup) > 1000 ) {
+    double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
+    Serial.print("#FRAME RATE: "); Serial.print(fr);
+    Serial.print(" - SLOSH: "); Serial.println(sloshCount);
     
-    Serial.print("### BEGIN FRAME ### "); Serial.println(lastFrame);
+    lastCleanup = millis();
+    frameCount = 0; sloshCount = 0;
+  }
+
+  if ( (millis() - lastFrame) > (1000/FRAMERATE) ) {
+    lastFrame = millis();
+    frameCount++;
+    
+    //Serial.print("### BEGIN FRAME ### "); Serial.println(lastFrame);
   
     digitalWrite(13,LOW); //start of LED processing
 
@@ -232,6 +245,8 @@ void loop() {
     writeGlobes();
     pixels.show(); // This sends the updated pixel color to the hardware.
 
+  } else {
+    sloshCount++; //we didn't do anything so let's indicate that we had a spare cycle.
   }
 
   if ( Serial.peek() == -1 ) {
