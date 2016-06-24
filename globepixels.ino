@@ -35,7 +35,8 @@ typedef enum {
   S_BLANK,
   S_RAIN,
   S_PAPARAZZI,
-  S_COLOR
+  S_COLOR,
+  S_SPARKLE
 } sstate_t;
 sstate_t s = S_NOTOUCH;
 #define S_RAINBOW_SNAKE_LENGTH 15
@@ -178,6 +179,13 @@ void runS_COLOR() {
     pixels.setPixelColor(i,s_color);
   }
 }
+void runS_SPARKLE() {
+  if ( random(0,100) < 25 ) {
+    for ( int i=0; i<25; i++ ) { pixels.setPixelColor(random(0,NUMPIXELS), s_color); } //light one
+  } else {
+    for ( int i=0; i<25; i++ ) { pixels.setPixelColor(random(0,NUMPIXELS), 0); } //extinguish one
+  }
+}
 
 
 void runGlobes() {
@@ -202,6 +210,8 @@ void runStrip() {
     runS_BLANK();
   } else if ( s == S_COLOR ) {
     runS_COLOR();
+  } else if ( s == S_SPARKLE ) {
+    runS_SPARKLE();
   }
 }
 
@@ -255,33 +265,30 @@ void loop() {
   //we must remember to pop the command char off, if it's a single-byte command.
   else if ( Serial.peek() == (byte)'r' ) { g=G_RAINBOW; Serial.read(); }
   else if ( Serial.peek() == (byte)'b' ) { g=G_BLANK; Serial.read(); }
-  else if ( Serial.peek() == (byte)'c' ) {
-    if ( Serial.available() >= 4 ) {
-      //we have the 'c' character and the three color bytes.
-      Serial.read(); //throw away the 'c'
-      g_color = pixels.Color(Serial.read(), Serial.read(), Serial.read());
-      g=G_COLOR;
-    }
-  }
+  else if ( Serial.peek() == (byte)'c' ) { g_color = getColorFromSerial(); } //set color
+  else if ( Serial.peek() == (byte)'o' ) { if ( Serial.available() >= 13 ) { g=G_COLOR; Serial.read(); } } //color mode
   else if ( Serial.peek() == (byte)'s' ) { g=G_STROBEONCE; Serial.read(); }
 
   else if ( Serial.peek() == (byte)'R' ) { s=S_RAINBOW; Serial.read(); }
   else if ( Serial.peek() == (byte)'B' ) { s=S_BLANK; Serial.read(); }
-  else if ( Serial.peek() == (byte)'C' ) {
-    if ( Serial.available() >= 4 ) {
-      //we have the 'c' character and the three color bytes.
-      Serial.read(); //throw away the 'c'
-      s_color = pixels.Color(Serial.read(), Serial.read(), Serial.read());
-      s=S_COLOR;
-    }
-  }
+  else if ( Serial.peek() == (byte)'C' ) { if ( Serial.available() >= 13 ) { s_color = getColorFromSerial(); } } //set color
+  else if ( Serial.peek() == (byte)'O' ) { s=S_COLOR; Serial.read(); } //color mode
   else if ( Serial.peek() == (byte)'A' ) { s=S_RAIN; Serial.read(); }
   else if ( Serial.peek() == (byte)'P' ) { s=S_PAPARAZZI; Serial.read(); }
+  else if ( Serial.peek() == (byte)'K' ) { s=S_SPARKLE; Serial.read(); }
   else { Serial.print((char)Serial.read()); Serial.println("?"); }
     
 }
 
 //My utilities below
+
+uint32_t getColorFromSerial() {
+  //we have the 'c' character and the three color bytes.
+  Serial.read(); //throw away the 'c'
+  int r=Serial.parseInt(); int g=Serial.parseInt(); int b=Serial.parseInt();
+  Serial.print("#Set color to "); Serial.print(r); Serial.print(","); Serial.print(g); Serial.print(","); Serial.println(b);
+  return pixels.Color(r,g,b);
+}
 
 uint32_t wheelForPos(int x) { return wheelForPos(x,0); }
 uint32_t wheelForPos(int x, int offset) {
