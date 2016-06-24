@@ -6,7 +6,7 @@
 #endif
 
 #define PIN            8
-#define NUMPIXELS      300
+#define NUMPIXELS      120
 #define GLOBE_SIZE     2   //How many leds are inside of one globe
 #define GLOBE_SPACING  10  //this minus GLOBE_SIZE equals the amount of LEDs between globes
 #define GLOBE_COUNT    30  //just to save RAM - we should calculate this on the fly though
@@ -36,7 +36,8 @@ typedef enum {
   S_RAIN,
   S_PAPARAZZI,
   S_COLOR,
-  S_SPARKLE
+  S_SPARKLE,
+  S_DRIP
 } sstate_t;
 sstate_t s = S_NOTOUCH;
 #define S_RAINBOW_SNAKE_LENGTH 15
@@ -66,6 +67,9 @@ void setup() {
 void setGlobe(int x, uint32_t color) {
   globes[x] = color;
 }
+int getGlobe(int x) {
+  return globes[x];
+}
 
 void setAllGlobes(uint32_t color) {
   for ( int i=0; i<GLOBE_COUNT; i++ ) {
@@ -82,6 +86,14 @@ void writeGlobes() {
       }
     }
   }
+}
+
+bool isInGlobe(int pos) {
+  return (pos%GLOBE_SPACING) < GLOBE_SIZE;
+}
+
+int whichGlobe(int pos) {
+  return pos/GLOBE_SPACING;
 }
 
 int g_offset = 0;
@@ -189,6 +201,48 @@ void runS_SPARKLE() {
     }
   }
 }
+int drip_pos = 0; 
+bool drip_flip = false;
+void runS_DRIP() {
+
+  //Serial.print("#Drip pos = "); Serial.println(drip_pos);
+
+  if ( drip_pos <= 0 ) {
+    drip_pos = NUMPIXELS-1;
+  }
+
+  if ( isInGlobe(drip_pos) ) {
+    pixels.setPixelColor(drip_pos+1,0); //blank the one above this because it's not in the globe.
+    int which = whichGlobe(drip_pos);
+    byte x = getGlobe(which);
+    if ( drip_flip == false ) {
+      if ( x < 200 ) {
+        x+=10;
+      } else {
+        x=200;
+        drip_flip = true;
+      }
+    } else { //drip_flip is true; let's fade out instead;
+      if ( x > 10 ) {
+        x-=10;
+      } else {
+        x=0;
+        drip_flip=false;
+        while (drip_pos > 0 and isInGlobe(drip_pos)) {
+          drip_pos--;
+        }
+      }
+    }
+    setGlobe(which,pixels.Color(0,(x*.75),x));
+  } else { //it's not a globe, do something cool in between.
+    pixels.setPixelColor(drip_pos,pixels.Color(0,0,50));
+    if ( !isInGlobe(drip_pos+1) ) {
+      pixels.setPixelColor(drip_pos+1,0);
+    }
+    drip_pos--;
+  }
+  
+}
 
 
 void runGlobes() {
@@ -215,6 +269,8 @@ void runStrip() {
     runS_COLOR();
   } else if ( s == S_SPARKLE ) {
     runS_SPARKLE();
+  } else if ( s == S_DRIP ) {
+    runS_DRIP();
   }
 }
 
@@ -271,6 +327,7 @@ void loop() {
   else if ( Serial.peek() == (byte)'c' ) { g_color = getColorFromSerial(); } //set color
   else if ( Serial.peek() == (byte)'o' ) { g=G_COLOR; Serial.read(); } //color mode
   else if ( Serial.peek() == (byte)'s' ) { g=G_STROBEONCE; Serial.read(); }
+  else if ( Serial.peek() == (byte)'n' ) { g=G_NOTOUCH; Serial.read(); }
 
   else if ( Serial.peek() == (byte)'R' ) { s=S_RAINBOW; Serial.read(); }
   else if ( Serial.peek() == (byte)'B' ) { s=S_BLANK; Serial.read(); }
@@ -279,6 +336,9 @@ void loop() {
   else if ( Serial.peek() == (byte)'A' ) { s=S_RAIN; Serial.read(); }
   else if ( Serial.peek() == (byte)'P' ) { s=S_PAPARAZZI; Serial.read(); }
   else if ( Serial.peek() == (byte)'K' ) { s=S_SPARKLE; Serial.read(); }
+  else if ( Serial.peek() == (byte)'N' ) { s=S_NOTOUCH; Serial.read(); }
+  else if ( Serial.peek() == (byte)'D' ) { s=S_DRIP; g=G_NOTOUCH; Serial.read(); }
+  
   else { Serial.print((char)Serial.read()); Serial.println("?"); }
     
 }
