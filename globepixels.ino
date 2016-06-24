@@ -46,6 +46,7 @@ void setup() {
   pinMode(13, OUTPUT); 
 
   Serial.begin(38400);
+  Serial.setTimeout(10);
   Serial.println("#globepixels coming up");
 
   pixels.begin();
@@ -180,10 +181,12 @@ void runS_COLOR() {
   }
 }
 void runS_SPARKLE() {
-  if ( random(0,100) < 25 ) {
-    for ( int i=0; i<25; i++ ) { pixels.setPixelColor(random(0,NUMPIXELS), s_color); } //light one
-  } else {
-    for ( int i=0; i<25; i++ ) { pixels.setPixelColor(random(0,NUMPIXELS), 0); } //extinguish one
+  for ( int i=0; i<25; i++ ) { 
+    if ( random(0,100) < 15 ) {
+      pixels.setPixelColor(random(0,NUMPIXELS), s_color); //light one
+    } else {
+      pixels.setPixelColor(random(0,NUMPIXELS), 0); //extinguish one
+    }
   }
 }
 
@@ -266,12 +269,12 @@ void loop() {
   else if ( Serial.peek() == (byte)'r' ) { g=G_RAINBOW; Serial.read(); }
   else if ( Serial.peek() == (byte)'b' ) { g=G_BLANK; Serial.read(); }
   else if ( Serial.peek() == (byte)'c' ) { g_color = getColorFromSerial(); } //set color
-  else if ( Serial.peek() == (byte)'o' ) { if ( Serial.available() >= 13 ) { g=G_COLOR; Serial.read(); } } //color mode
+  else if ( Serial.peek() == (byte)'o' ) { g=G_COLOR; Serial.read(); } //color mode
   else if ( Serial.peek() == (byte)'s' ) { g=G_STROBEONCE; Serial.read(); }
 
   else if ( Serial.peek() == (byte)'R' ) { s=S_RAINBOW; Serial.read(); }
   else if ( Serial.peek() == (byte)'B' ) { s=S_BLANK; Serial.read(); }
-  else if ( Serial.peek() == (byte)'C' ) { if ( Serial.available() >= 13 ) { s_color = getColorFromSerial(); } } //set color
+  else if ( Serial.peek() == (byte)'C' ) { s_color = getColorFromSerial(); } //set color
   else if ( Serial.peek() == (byte)'O' ) { s=S_COLOR; Serial.read(); } //color mode
   else if ( Serial.peek() == (byte)'A' ) { s=S_RAIN; Serial.read(); }
   else if ( Serial.peek() == (byte)'P' ) { s=S_PAPARAZZI; Serial.read(); }
@@ -285,8 +288,10 @@ void loop() {
 uint32_t getColorFromSerial() {
   //we have the 'c' character and the three color bytes.
   Serial.read(); //throw away the 'c'
-  int r=Serial.parseInt(); int g=Serial.parseInt(); int b=Serial.parseInt();
-  Serial.print("#Set color to "); Serial.print(r); Serial.print(","); Serial.print(g); Serial.print(","); Serial.println(b);
+  Serial.print("#Set color to ");
+  int r=Serial.parseInt(); Serial.print(r); 
+  int g=Serial.parseInt(); Serial.print(","); Serial.print(g); 
+  int b=Serial.parseInt(); Serial.print(","); Serial.println(b);
   return pixels.Color(r,g,b);
 }
 
