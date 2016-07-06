@@ -287,8 +287,10 @@ void loop() {
 
   if ( (millis() - lastCleanup) > 1000 ) {
     double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
+    float load = estimateLoad();
     Serial.print("#FRAME RATE: "); Serial.print(fr);
-    Serial.print(" - SLOSH: "); Serial.println(sloshCount);
+    Serial.print(" - SLOSH: "); Serial.print(sloshCount);
+    Serial.print(" - LOAD: "); Serial.println(load);
     
     lastCleanup = millis();
     frameCount = 0; sloshCount = 0;
@@ -312,6 +314,10 @@ void loop() {
   
     //Serial.print("#begin write at "); Serial.println(millis());
     writeGlobes();
+
+    //make sure we aren't overloading, and dim if we are.
+    estimateLoad(); //TODO - actually do something with this
+
     pixels.show(); // This sends the updated pixel color to the hardware.
 
   } else {
@@ -319,6 +325,28 @@ void loop() {
   }
 
   if ( Serial.peek() == -1 ) {
+//My utilities below
+
+float estimateLoad() {
+  //thanks from https://github.com/teachop/xcore_neopixel_buffered/blob/master/module_neopixel/src/neopixel.xc#L38
+  float load = 0;
+  uint32_t color = 0;
+  int element = 0;
+  for ( int i=0; i<NUMPIXELS; i++ ) {
+    color = pixels.getPixelColor(i);
+    element = Red(color);
+    load += ((float)element/255)*20;
+    //Serial.print("Red val is "); Serial.print(element);
+    //Serial.print(" so load is "); Serial.print((((float)element/255)*20)); Serial.println("mA");
+    element = Green(color);
+    load += ((float)element/255)*20;
+    element = Blue(color);
+    load += ((float)element/255)*20;
+    //Serial.println(load);
+  }
+  return load;
+}
+
     //do nothing. There is nothing to read
   }
   //we must remember to pop the command char off, if it's a single-byte command.
@@ -343,7 +371,7 @@ void loop() {
     
 }
 
-//My utilities below
+}
 
 uint32_t getColorFromSerial() {
   //we have the 'c' character and the three color bytes.
