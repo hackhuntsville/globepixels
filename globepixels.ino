@@ -56,7 +56,7 @@ void setup() {
   Serial.println("#leds up");
   
   Wire.begin(8);
-  Wire.onReceive(handleWire);
+  //Wire.onReceive(handleWire);
   Serial.println("#wire up");
 
   lastFrame = millis(); lastCleanup = millis(); frameCount = 0; sloshCount = 0;
@@ -274,14 +274,16 @@ void runStrip() {
   }
 }
 
+/*
 void handleWire(int count) {
-  Serial.println("#Got i2c");
+  Serial.print("#Got i2c ");
   while (0 < Wire.available()) {
     char c = Wire.read(); 
     Serial.print(c);
   }
   Serial.println();
 }
+*/
 
 void loop() {
 
@@ -324,7 +326,11 @@ void loop() {
     sloshCount++; //we didn't do anything so let's indicate that we had a spare cycle.
   }
 
-  if ( Serial.peek() == -1 ) {
+  processControlStream(Serial);
+  processControlStream(Wire);
+
+}
+
 //My utilities below
 
 float estimateLoad() {
@@ -347,39 +353,40 @@ float estimateLoad() {
   return load;
 }
 
+void processControlStream(Stream &stream) {
+
+  if ( stream.peek() == -1 ) {
     //do nothing. There is nothing to read
   }
   //we must remember to pop the command char off, if it's a single-byte command.
-  else if ( Serial.peek() == (byte)'r' ) { g=G_RAINBOW; Serial.read(); }
-  else if ( Serial.peek() == (byte)'b' ) { g=G_BLANK; Serial.read(); }
-  else if ( Serial.peek() == (byte)'c' ) { g_color = getColorFromSerial(); } //set color
-  else if ( Serial.peek() == (byte)'o' ) { g=G_COLOR; Serial.read(); } //color mode
-  else if ( Serial.peek() == (byte)'s' ) { g=G_STROBEONCE; Serial.read(); }
-  else if ( Serial.peek() == (byte)'n' ) { g=G_NOTOUCH; Serial.read(); }
+  else if ( stream.peek() == (byte)'r' ) { g=G_RAINBOW; stream.read(); }
+  else if ( stream.peek() == (byte)'b' ) { g=G_BLANK; stream.read(); }
+  else if ( stream.peek() == (byte)'c' ) { g_color = getColorFromStream(stream); } //set color
+  else if ( stream.peek() == (byte)'o' ) { g=G_COLOR; stream.read(); } //color mode
+  else if ( stream.peek() == (byte)'s' ) { g=G_STROBEONCE; stream.read(); }
+  else if ( stream.peek() == (byte)'n' ) { g=G_NOTOUCH; stream.read(); }
 
-  else if ( Serial.peek() == (byte)'R' ) { s=S_RAINBOW; Serial.read(); }
-  else if ( Serial.peek() == (byte)'B' ) { s=S_BLANK; Serial.read(); }
-  else if ( Serial.peek() == (byte)'C' ) { s_color = getColorFromSerial(); } //set color
-  else if ( Serial.peek() == (byte)'O' ) { s=S_COLOR; Serial.read(); } //color mode
-  else if ( Serial.peek() == (byte)'A' ) { s=S_RAIN; Serial.read(); }
-  else if ( Serial.peek() == (byte)'P' ) { s=S_PAPARAZZI; Serial.read(); }
-  else if ( Serial.peek() == (byte)'K' ) { s=S_SPARKLE; Serial.read(); }
-  else if ( Serial.peek() == (byte)'N' ) { s=S_NOTOUCH; Serial.read(); }
-  else if ( Serial.peek() == (byte)'D' ) { s=S_DRIP; g=G_NOTOUCH; Serial.read(); }
+  else if ( stream.peek() == (byte)'R' ) { s=S_RAINBOW; stream.read(); }
+  else if ( stream.peek() == (byte)'B' ) { s=S_BLANK; stream.read(); }
+  else if ( stream.peek() == (byte)'C' ) { s_color = getColorFromStream(stream); } //set color
+  else if ( stream.peek() == (byte)'O' ) { s=S_COLOR; stream.read(); } //color mode
+  else if ( stream.peek() == (byte)'A' ) { s=S_RAIN; stream.read(); }
+  else if ( stream.peek() == (byte)'P' ) { s=S_PAPARAZZI; stream.read(); }
+  else if ( stream.peek() == (byte)'K' ) { s=S_SPARKLE; stream.read(); }
+  else if ( stream.peek() == (byte)'N' ) { s=S_NOTOUCH; stream.read(); }
+  else if ( stream.peek() == (byte)'D' ) { s=S_DRIP; g=G_NOTOUCH; stream.read(); }
   
-  else { Serial.print((char)Serial.read()); Serial.println("?"); }
-    
-}
+  else { Serial.print((char)stream.read()); Serial.println("?"); }
 
 }
 
-uint32_t getColorFromSerial() {
+uint32_t getColorFromStream(Stream &stream) {
   //we have the 'c' character and the three color bytes.
-  Serial.read(); //throw away the 'c'
+  stream.read(); //throw away the 'c'
   Serial.print("#Set color to ");
-  int r=Serial.parseInt(); Serial.print(r); 
-  int g=Serial.parseInt(); Serial.print(","); Serial.print(g); 
-  int b=Serial.parseInt(); Serial.print(","); Serial.println(b);
+  int r=stream.parseInt(); Serial.print(r); 
+  int g=stream.parseInt(); Serial.print(","); Serial.print(g); 
+  int b=stream.parseInt(); Serial.print(","); Serial.println(b);
   return pixels.Color(r,g,b);
 }
 
