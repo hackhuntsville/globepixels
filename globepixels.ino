@@ -49,8 +49,7 @@ void setup() {
   Serial.begin(38400);
   Serial.setTimeout(100);
   //Send bytes faster than this timeout when setting colors, etc.
-
-  Serial.println("#globepixels coming up");
+  Serial.println("#serial up");
 
   pixels.begin();
   g = G_RAINBOW;
@@ -65,6 +64,7 @@ void setup() {
   //or really do anything unless we have a handler registered. The handler can
   //literally be a noop... ugh
   Wire.onReceive(handleWire);
+  Wire.setTimeout(100);
   Serial.println("#wire up");
 
   lastFrame = millis(); lastCleanup = millis(); frameCount = 0; sloshCount = 0;
