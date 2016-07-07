@@ -47,7 +47,9 @@ void setup() {
   pinMode(13, OUTPUT); 
 
   Serial.begin(38400);
-  Serial.setTimeout(10);
+  Serial.setTimeout(100);
+  //Send bytes faster than this timeout when setting colors, etc.
+
   Serial.println("#globepixels coming up");
 
   pixels.begin();
@@ -56,7 +58,13 @@ void setup() {
   Serial.println("#leds up");
   
   Wire.begin(8);
-  //Wire.onReceive(handleWire);
+  //We have to register a handler because of a bug in the arduino wire library.
+  //https://github.com/arduino/Arduino/blob/master/hardware/arduino/avr/libraries/Wire/src/Wire.cpp#L279
+  //If you don't have a user handler registered, the onReceiveService() fn
+  //immediately returns. It doesn't copy the received stuff out of the buffer
+  //or really do anything unless we have a handler registered. The handler can
+  //literally be a noop... ugh
+  Wire.onReceive(handleWire);
   Serial.println("#wire up");
 
   lastFrame = millis(); lastCleanup = millis(); frameCount = 0; sloshCount = 0;
@@ -274,16 +282,9 @@ void runStrip() {
   }
 }
 
-/*
 void handleWire(int count) {
-  Serial.print("#Got i2c ");
-  while (0 < Wire.available()) {
-    char c = Wire.read(); 
-    Serial.print(c);
-  }
-  Serial.println();
+  Serial.println("#Got i2c");
 }
-*/
 
 void loop() {
 
