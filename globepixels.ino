@@ -165,26 +165,26 @@ int s_snake_offset = 0;
 int s_snake_end = 0;
 void runS_RAINBOW() {
 
+  runS_FADE(); //fade the entire strip first
+
+  //now we start drawing the new snake on top of the existing pixels.
+  //after a while the tail will fade all the way down.
+
   if ( s_snake_offset > NUMPIXELS ) {
     s_snake_offset = 0;
   }
 
-  pixels[s_snake_offset] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
-  //Serial.print("#rainbow got 0x"); Serial.print(String(pixels[s_snake_offset],HEX)); Serial.print(" at "); Serial.println(s_snake_offset);
-  if ( s_snake_offset >= S_RAINBOW_SNAKE_LENGTH ) {
-    s_snake_end = s_snake_offset-S_RAINBOW_SNAKE_LENGTH;
-  } else {
-    s_snake_end = NUMPIXELS-S_RAINBOW_SNAKE_LENGTH+s_snake_offset;
+  //Serial.print("#Snake top:"); Serial.println(s_snake_offset);
+  for ( int i = 0; i < S_RAINBOW_SNAKE_LENGTH; i++ ) {
+    int px = s_snake_offset + i;
+    if ( px >= NUMPIXELS ) {
+      //we're off the top of the strip... write to the corresponding pixel at the bottom instead
+      px = px-NUMPIXELS;
+    }
+    pixels[px] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
   }
-  pixels[s_snake_end] = CRGB(0,0,0);
-  //fade stuff 
-  pixels[s_snake_end+1] = pixels[s_snake_end+1].fadeToBlackBy(128);
-  pixels[s_snake_end+2] = pixels[s_snake_end+2].fadeToBlackBy(128);
-  pixels[s_snake_end+3] = pixels[s_snake_end+3].fadeToBlackBy(128);
-  
+ 
   s_snake_offset++;
-
-  //delay(50);
 
 }
 void runS_BLANK() {
@@ -231,7 +231,8 @@ void runS_SPARKLE() {
     }
   }
 }
-int drip_pos = 0; 
+int drip_pos = 0;
+byte drip_scale = 0;
 bool drip_flip = false;
 void runS_DRIP() {
 
@@ -241,31 +242,37 @@ void runS_DRIP() {
     drip_pos = NUMPIXELS-1;
   }
 
+  //Serial.print("#DRIP pos="); Serial.println(drip_pos);
+
   if ( isInGlobe(drip_pos) ) {
-    pixels[drip_pos+1] = 0; //blank the one above this because it's not in the globe.
+    //Serial.print("#DRIP in globe ");
+    /*if ( drip_pos+1 < NUMPIXELS )*/ pixels[drip_pos+1] = 0; //blank the one above this because it's not in the globe. TODO: can this overrun our array?
     int which = whichGlobe(drip_pos);
-    byte x = getGlobe(which);
+    //Serial.print(which); Serial.print(" Scaling factor was "); Serial.print(drip_scale);
     if ( drip_flip == false ) {
-      if ( x < 200 ) {
-        x+=10;
+      if ( drip_scale < 245 ) {
+        drip_scale += 10;
       } else {
-        x=200;
+        drip_scale=255;
         drip_flip = true;
+	//Serial.print(" flip!");
       }
     } else { //drip_flip is true; let's fade out instead;
-      if ( x > 10 ) {
-        x-=10;
+      if ( drip_scale > 10 ) {
+        drip_scale-=10;
       } else {
-        x=0;
+        drip_scale=0;
         drip_flip=false;
         while (drip_pos > 0 and isInGlobe(drip_pos)) {
           drip_pos--;
         }
       }
     }
-    setGlobe(which,CRGB(0,(x*.75),x));
+    //Serial.print(" new scale "); Serial.println(drip_scale);
+    //Serial.print("#DRIP setting globe "); Serial.println(which);
+    setGlobe(which,s_color.scale8(CRGB(drip_scale,drip_scale,drip_scale)));
   } else { //it's not a globe, do something cool in between.
-    pixels[drip_pos] = CRGB(0,0,50);
+    pixels[drip_pos] = s_color.scale8(CRGB(128,128,128));
     if ( !isInGlobe(drip_pos+1) ) {
       pixels[drip_pos+1] = 0;
     }
