@@ -194,7 +194,7 @@ void runS_BLANK() {
 }
 void runS_FADE() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    pixels[i] = pixels[i].fadeToBlackBy(32);
+    pixels[i].fadeToBlackBy(32); //operates in place
   }
 }
 void runS_RAIN() {
@@ -213,7 +213,7 @@ void runS_PAPARAZZI() {
   //decide if we want to add a new raindrop
   if ( random(0,100) < 60 ) {
     //we do
-    pixels[random(0,NUMPIXELS)] = CRGB(255,255,255);
+    pixels[random(0,NUMPIXELS)] = s_color;
   }
   //delay(random(75,100));
 }
