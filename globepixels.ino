@@ -142,7 +142,7 @@ void runS_RAINBOW() {
   }
 
   pixels[s_snake_offset] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
-  Serial.print("#rainbow got 0x"); Serial.print(String(pixels[s_snake_offset],HEX)); Serial.print(" at "); Serial.println(s_snake_offset);
+  //Serial.print("#rainbow got 0x"); Serial.print(String(pixels[s_snake_offset],HEX)); Serial.print(" at "); Serial.println(s_snake_offset);
   if ( s_snake_offset >= S_RAINBOW_SNAKE_LENGTH ) {
     s_snake_end = s_snake_offset-S_RAINBOW_SNAKE_LENGTH;
   } else {
@@ -151,8 +151,8 @@ void runS_RAINBOW() {
   pixels[s_snake_end] = CRGB(0,0,0);
   //fade stuff 
   pixels[s_snake_end+1] = pixels[s_snake_end+1].fadeToBlackBy(128);
-  pixels[s_snake_end+2] = pixels[s_snake_end+2].fadeToBlackBy(64);
-  pixels[s_snake_end+3] = pixels[s_snake_end+3].fadeToBlackBy(32);
+  pixels[s_snake_end+2] = pixels[s_snake_end+2].fadeToBlackBy(128);
+  pixels[s_snake_end+3] = pixels[s_snake_end+3].fadeToBlackBy(128);
   
   s_snake_offset++;
 
