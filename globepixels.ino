@@ -5,12 +5,15 @@
   #include <avr/power.h>
 #endif
 
+#define VERSION        7
+
 #define PIN            8
 #define NUMPIXELS      120
-#define GLOBE_SIZE     2   //How many leds are inside of one globe
-#define GLOBE_SPACING  10  //this minus GLOBE_SIZE equals the amount of LEDs between globes
-#define GLOBE_COUNT    30  //just to save RAM - we should calculate this on the fly though
-#define FRAMERATE      30  //how many frames per second to we ideally want to run
+#define GLOBE_SIZE     2     //How many leds are inside of one globe
+#define GLOBE_SPACING  10    //this minus GLOBE_SIZE equals the amount of LEDs between globes
+#define GLOBE_COUNT    30    //just to save RAM - we should calculate this on the fly though
+#define FRAMERATE      30    //how many frames per second to we ideally want to run
+#define MAX_LOAD_MA    1000  //how many mA are we allowed to draw, at 5 volts
 
 unsigned long lastFrame;
 unsigned long lastCleanup;
@@ -24,7 +27,8 @@ typedef enum {
   G_RAINBOW,
   G_BLANK,
   G_COLOR,
-  G_STROBEONCE
+  G_STROBEONCE,
+  G_VERSION
 } gstate_t;
 gstate_t g = G_NOTOUCH;
 
@@ -50,10 +54,12 @@ void setup() {
   Serial.setTimeout(100);
   //Send bytes faster than this timeout when setting colors, etc.
   Serial.println("#serial up");
+  Serial.print("#GLOBEPIXELS version "); Serial.println(VERSION);
 
   FastLED.addLeds<NEOPIXEL, PIN>(pixels, NUMPIXELS);
-  g = G_RAINBOW;
-  s = S_RAIN;
+  set_max_power_in_volts_and_milliamps(5,MAX_LOAD_MA); //assuming 5 volts
+  g = G_VERSION;
+  s = S_NOTOUCH;
   Serial.println("#leds up");
   
   Wire.begin(8);
@@ -132,6 +138,25 @@ void runG_COLOR() {
 void runG_STROBEONCE() {
   runG_COLOR();
   g=G_BLANK;
+}
+void runG_VERSION() {
+  runG_BLANK();
+  for ( int i=0; i<8; i++ ) {
+    if ( i < GLOBE_COUNT ) {
+      if ( bitRead(VERSION,i) ) {
+        setGlobe(i,g_color);
+      } else {
+        setGlobe(i,0);
+      }
+    }
+  }
+  if ( millis() > 10000 ) {
+    //It has been 10 seconds. Do something more interesting with our life.
+    if ( s == S_NOTOUCH ) {
+      s=S_DRIP;
+      g=G_NOTOUCH;
+    }
+  }
 }
 
 CRGB s_color = CRGB(80,141,172);
@@ -259,6 +284,8 @@ void runGlobes() {
     runG_COLOR();
   } else if ( g == G_STROBEONCE ) {
     runG_STROBEONCE();
+  } else if ( g == G_VERSION ) {
+    runG_VERSION();
   }
 }
 void runStrip() {
@@ -320,7 +347,8 @@ void loop() {
     //make sure we aren't overloading, and dim if we are.
     estimateLoad(); //TODO - actually do something with this
 
-    FastLED.show(); // This sends the updated pixel color to the hardware.
+    //FastLED.show();
+    show_at_max_brightness_for_power();
 
   } else {
     sloshCount++; //we didn't do anything so let's indicate that we had a spare cycle.
@@ -365,6 +393,7 @@ void processControlStream(Stream &stream) {
   else if ( stream.peek() == (byte)'o' ) { g=G_COLOR; stream.read(); } //color mode
   else if ( stream.peek() == (byte)'s' ) { g=G_STROBEONCE; stream.read(); }
   else if ( stream.peek() == (byte)'n' ) { g=G_NOTOUCH; stream.read(); }
+  else if ( stream.peek() == (byte)'v' ) { g=G_VERSION; stream.read(); } //This won't work for long. It bails after a few millis.
 
   else if ( stream.peek() == (byte)'R' ) { s=S_RAINBOW; stream.read(); }
   else if ( stream.peek() == (byte)'B' ) { s=S_BLANK; stream.read(); }
@@ -376,6 +405,8 @@ void processControlStream(Stream &stream) {
   else if ( stream.peek() == (byte)'K' ) { s=S_SPARKLE; stream.read(); }
   else if ( stream.peek() == (byte)'N' ) { s=S_NOTOUCH; stream.read(); }
   else if ( stream.peek() == (byte)'D' ) { s=S_DRIP; g=G_NOTOUCH; stream.read(); }
+
+  else if ( stream.peek() == (byte)'!' ) { softwareReset(); }
   
   else { Serial.print((char)stream.read()); Serial.println("?"); }
 
@@ -454,3 +485,7 @@ uint8_t Blue(uint32_t color)
   return color & 0xFF;
 }
 
+//from http://forum.arduino.cc/index.php?topic=49581.0
+void softwareReset() { // Restarts program from beginning but does not reset the peripherals and registers
+  asm volatile ("  jmp 0");  
+} 
