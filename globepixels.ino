@@ -32,6 +32,7 @@ typedef enum {
   S_NOTOUCH,
   S_RAINBOW,
   S_BLANK,
+  S_FADE,
   S_RAIN,
   S_PAPARAZZI,
   S_COLOR,
@@ -166,28 +167,21 @@ void runS_BLANK() {
     pixels[i] = 0;
   }
 }
+void runS_FADE() {
+  for ( int i=0; i<NUMPIXELS; i++ ) {
+    pixels[i] = pixels[i].fadeToBlackBy(32);
+  }
+}
 void runS_RAIN() {
   
   //fade out existing pixels
-  for ( int i=0; i<NUMPIXELS; i++ ) {
-    /*
-    byte x = pixels[i];
-    if ( x < 10 ) {
-      x=0;
-    } else {
-      x-=10;
-    }
-    pixels[i] = CRGB(x,x,x);
-    */
-    pixels[i] = pixels[i].fadeToBlackBy(32);
-  }
+  runS_FADE();
 
   //decide if we want to add a new raindrop
   if ( random(0,2) == 0 ) {
     //we do
     pixels[random(0,NUMPIXELS)] = s_color;
   }
-  
 }
 void runS_PAPARAZZI() {
   runS_BLANK();
@@ -276,6 +270,8 @@ void runStrip() {
     runS_PAPARAZZI();
   } else if ( s == S_BLANK ) {
     runS_BLANK();
+  } else if ( s == S_FADE ) {
+    runS_FADE();
   } else if ( s == S_COLOR ) {
     runS_COLOR();
   } else if ( s == S_SPARKLE ) {
@@ -372,6 +368,7 @@ void processControlStream(Stream &stream) {
 
   else if ( stream.peek() == (byte)'R' ) { s=S_RAINBOW; stream.read(); }
   else if ( stream.peek() == (byte)'B' ) { s=S_BLANK; stream.read(); }
+  else if ( stream.peek() == (byte)'F' ) { s=S_FADE; stream.read(); }
   else if ( stream.peek() == (byte)'C' ) { s_color = getColorFromStream(stream); } //set color
   else if ( stream.peek() == (byte)'O' ) { s=S_COLOR; stream.read(); } //color mode
   else if ( stream.peek() == (byte)'A' ) { s=S_RAIN; stream.read(); }
