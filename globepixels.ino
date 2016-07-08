@@ -133,6 +133,8 @@ void runG_STROBEONCE() {
   g=G_BLANK;
 }
 
+CRGB s_color = CRGB(80,141,172);
+
 int s_snake_offset = 0;
 int s_snake_end = 0;
 void runS_RAINBOW() {
@@ -168,6 +170,7 @@ void runS_RAIN() {
   
   //fade out existing pixels
   for ( int i=0; i<NUMPIXELS; i++ ) {
+    /*
     byte x = pixels[i];
     if ( x < 10 ) {
       x=0;
@@ -175,15 +178,16 @@ void runS_RAIN() {
       x-=10;
     }
     pixels[i] = CRGB(x,x,x);
+    */
+    pixels[i] = pixels[i].fadeToBlackBy(32);
   }
 
   //decide if we want to add a new raindrop
   if ( random(0,2) == 0 ) {
     //we do
-    pixels[random(0,NUMPIXELS)] = CRGB(255,255,255);
+    pixels[random(0,NUMPIXELS)] = s_color;
   }
   
-  //delay(40);
 }
 void runS_PAPARAZZI() {
   runS_BLANK();
@@ -194,7 +198,6 @@ void runS_PAPARAZZI() {
   }
   //delay(random(75,100));
 }
-CRGB s_color = CRGB(80,141,172);
 void runS_COLOR() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
     pixels[i] = s_color;
