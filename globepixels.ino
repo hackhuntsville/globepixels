@@ -1,4 +1,4 @@
-#include <Adafruit_NeoPixel.h>
+#include <FastLED.h>
 #include <Wire.h>
 
 #ifdef __AVR__
@@ -12,13 +12,12 @@
 #define GLOBE_COUNT    30  //just to save RAM - we should calculate this on the fly though
 #define FRAMERATE      30  //how many frames per second to we ideally want to run
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-
 unsigned long lastFrame;
 unsigned long lastCleanup;
 unsigned long frameCount;
 unsigned long sloshCount;
-uint32_t globes[GLOBE_COUNT];
+CRGB globes[GLOBE_COUNT];
+CRGB pixels[NUMPIXELS];
 
 typedef enum {
   G_NOTOUCH,
@@ -51,7 +50,7 @@ void setup() {
   //Send bytes faster than this timeout when setting colors, etc.
   Serial.println("#serial up");
 
-  pixels.begin();
+  FastLED.addLeds<NEOPIXEL, PIN>(pixels, NUMPIXELS);
   g = G_RAINBOW;
   s = S_RAIN;
   Serial.println("#leds up");
@@ -72,10 +71,10 @@ void setup() {
   
 }
 
-void setGlobe(int x, uint32_t color) {
+void setGlobe(int x, CRGB color) {
   globes[x] = color;
 }
-int getGlobe(int x) {
+CRGB getGlobe(int x) {
   return globes[x];
 }
 
@@ -90,7 +89,7 @@ void writeGlobes() {
     int globe_pos = globe_num*GLOBE_SPACING;
     for ( int led_pos=globe_pos; led_pos<globe_pos+GLOBE_SIZE; led_pos++ ) {
       if ( led_pos < NUMPIXELS ) { //don't overrun the strand you idiot
-        pixels.setPixelColor(led_pos,globes[globe_num]);
+	pixels[led_pos] = globes[globe_num];
       }
     }
   }
@@ -123,7 +122,7 @@ void runG_BLANK() {
     setGlobe(i,0);
   }
 }
-uint32_t g_color = pixels.Color(80,141,172);
+CRGB g_color = CRGB(80,141,172);
 void runG_COLOR() {
   for ( int i=0; i<GLOBE_COUNT; i++ ) {
     setGlobe(i,g_color);
@@ -142,17 +141,18 @@ void runS_RAINBOW() {
     s_snake_offset = 0;
   }
 
-  pixels.setPixelColor(s_snake_offset, (HalfColor(wheelForPos(s_snake_offset), 1)));
+  pixels[s_snake_offset] = wheelForPos(s_snake_offset), 128;
+  Serial.print("#rainbow got 0x"); Serial.print(String(pixels[s_snake_offset],HEX)); Serial.print(" at "); Serial.println(s_snake_offset);
   if ( s_snake_offset >= S_RAINBOW_SNAKE_LENGTH ) {
     s_snake_end = s_snake_offset-S_RAINBOW_SNAKE_LENGTH;
   } else {
     s_snake_end = NUMPIXELS-S_RAINBOW_SNAKE_LENGTH+s_snake_offset;
   }
-  pixels.setPixelColor(s_snake_end, pixels.Color(0,0,0));
+  pixels[s_snake_end] = CRGB(0,0,0);
   //fade stuff 
-  pixels.setPixelColor(s_snake_end+1, HalfColor(pixels.getPixelColor(s_snake_end+1), 1));
-  pixels.setPixelColor(s_snake_end+2, HalfColor(pixels.getPixelColor(s_snake_end+2), 2));
-  pixels.setPixelColor(s_snake_end+3, HalfColor(pixels.getPixelColor(s_snake_end+3), 3));
+  pixels[s_snake_end+1] = scale8(pixels[s_snake_end+1], 128);
+  pixels[s_snake_end+2] = scale8(pixels[s_snake_end+2], 64);
+  pixels[s_snake_end+3] = scale8(pixels[s_snake_end+3], 32);
   
   s_snake_offset++;
 
@@ -161,26 +161,26 @@ void runS_RAINBOW() {
 }
 void runS_BLANK() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    pixels.setPixelColor(i,0);
+    pixels[i] = 0;
   }
 }
 void runS_RAIN() {
   
   //fade out existing pixels
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    byte x = pixels.getPixelColor(i);
+    byte x = pixels[i];
     if ( x < 10 ) {
       x=0;
     } else {
       x-=10;
     }
-    pixels.setPixelColor(i,pixels.Color(x,x,x));
+    pixels[i] = CRGB(x,x,x);
   }
 
   //decide if we want to add a new raindrop
   if ( random(0,2) == 0 ) {
     //we do
-    pixels.setPixelColor(random(0,NUMPIXELS), pixels.Color(255,255,255));
+    pixels[random(0,NUMPIXELS)] = CRGB(255,255,255);
   }
   
   //delay(40);
@@ -190,22 +190,22 @@ void runS_PAPARAZZI() {
   //decide if we want to add a new raindrop
   if ( random(0,100) < 60 ) {
     //we do
-    pixels.setPixelColor(random(0,NUMPIXELS), pixels.Color(255,255,255));
+    pixels[random(0,NUMPIXELS)] = CRGB(255,255,255);
   }
   //delay(random(75,100));
 }
-uint32_t s_color = pixels.Color(80,141,172);
+CRGB s_color = CRGB(80,141,172);
 void runS_COLOR() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    pixels.setPixelColor(i,s_color);
+    pixels[i] = s_color;
   }
 }
 void runS_SPARKLE() {
   for ( int i=0; i<25; i++ ) { 
     if ( random(0,100) < 15 ) {
-      pixels.setPixelColor(random(0,NUMPIXELS), s_color); //light one
+      pixels[random(0,NUMPIXELS)] = s_color; //light one
     } else {
-      pixels.setPixelColor(random(0,NUMPIXELS), 0); //extinguish one
+      pixels[random(0,NUMPIXELS)] = 0; //extinguish one
     }
   }
 }
@@ -220,7 +220,7 @@ void runS_DRIP() {
   }
 
   if ( isInGlobe(drip_pos) ) {
-    pixels.setPixelColor(drip_pos+1,0); //blank the one above this because it's not in the globe.
+    pixels[drip_pos+1] = 0; //blank the one above this because it's not in the globe.
     int which = whichGlobe(drip_pos);
     byte x = getGlobe(which);
     if ( drip_flip == false ) {
@@ -241,11 +241,11 @@ void runS_DRIP() {
         }
       }
     }
-    setGlobe(which,pixels.Color(0,(x*.75),x));
+    setGlobe(which,CRGB(0,(x*.75),x));
   } else { //it's not a globe, do something cool in between.
-    pixels.setPixelColor(drip_pos,pixels.Color(0,0,50));
+    pixels[drip_pos] = CRGB(0,0,50);
     if ( !isInGlobe(drip_pos+1) ) {
-      pixels.setPixelColor(drip_pos+1,0);
+      pixels[drip_pos+1] = 0;
     }
     drip_pos--;
   }
@@ -321,7 +321,7 @@ void loop() {
     //make sure we aren't overloading, and dim if we are.
     estimateLoad(); //TODO - actually do something with this
 
-    pixels.show(); // This sends the updated pixel color to the hardware.
+    FastLED.show(); // This sends the updated pixel color to the hardware.
 
   } else {
     sloshCount++; //we didn't do anything so let's indicate that we had a spare cycle.
@@ -340,7 +340,7 @@ float estimateLoad() {
   uint32_t color = 0;
   int element = 0;
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    color = pixels.getPixelColor(i);
+    color = pixels[i];
     element = Red(color);
     load += ((float)element/255)*20;
     //Serial.print("Red val is "); Serial.print(element);
@@ -381,18 +381,18 @@ void processControlStream(Stream &stream) {
 
 }
 
-uint32_t getColorFromStream(Stream &stream) {
+CRGB getColorFromStream(Stream &stream) {
   //we have the 'c' character and the three color bytes.
   stream.read(); //throw away the 'c'
   Serial.print("#Set color to ");
   int r=stream.parseInt(); Serial.print(r); 
   int g=stream.parseInt(); Serial.print(","); Serial.print(g); 
   int b=stream.parseInt(); Serial.print(","); Serial.println(b);
-  return pixels.Color(r,g,b);
+  return CRGB(r,g,b);
 }
 
-uint32_t wheelForPos(int x) { return wheelForPos(x,0); }
-uint32_t wheelForPos(int x, int offset) {
+CRGB wheelForPos(int x) { return wheelForPos(x,0); }
+CRGB wheelForPos(int x, int offset) {
   int thing = ((float)x/(float)NUMPIXELS)*255;
   thing += offset;
   while ( thing > 255 ) {
@@ -401,35 +401,35 @@ uint32_t wheelForPos(int x, int offset) {
   return Wheel((byte)thing);
 }
 
-uint32_t ReduceColor(uint32_t color, int percent) {
+CRGB ReduceColor(uint32_t color, int percent) {
   //broken
   int red = (int)(color>>16 & 0xFF);
   int green = (int)(color>>8 & 0xFF);
   int blue = (int)(color & 0xFF);
   //Serial.print(red); Serial.print(","); Serial.print(green); Serial.print(","); Serial.println(blue);
-  return pixels.Color((byte)red,(byte)green,(byte)blue);
+  return CRGB((byte)red,(byte)green,(byte)blue);
 }
 
 //Stolen utilities below
 
 //from strandtest
-uint32_t Wheel(byte WheelPos) {
+CRGB Wheel(byte WheelPos) {
   WheelPos = 255 - WheelPos;
   if(WheelPos < 85) {
-    return pixels.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+    return CRGB(255 - WheelPos * 3, 0, WheelPos * 3);
   }
   if(WheelPos < 170) {
     WheelPos -= 85;
-    return pixels.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+    return CRGB(0, WheelPos * 3, 255 - WheelPos * 3);
   }
   WheelPos -= 170;
-  return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+  return CRGB(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
 //from https://learn.adafruit.com/multi-tasking-the-arduino-part-3/put-it-all-together-dot-dot-dot
-uint32_t HalfColor(uint32_t color, int times) {
+CRGB HalfColor(uint32_t color, int times) {
   // Shift R, G and B components one bit to the right
-  uint32_t dimColor = pixels.Color(Red(color) >> 1, Green(color) >> 1, Blue(color) >> 1);
+  uint32_t dimColor = CRGB(Red(color) >> 1, Green(color) >> 1, Blue(color) >> 1);
   if ( times == 1 ) {
     return dimColor;
   } else {
