@@ -5,15 +5,18 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION        7
+#define VERSION         8
 
-#define PIN            8
-#define NUMPIXELS      120
-#define GLOBE_SIZE     2     //How many leds are inside of one globe
-#define GLOBE_SPACING  10    //this minus GLOBE_SIZE equals the amount of LEDs between globes
-#define GLOBE_COUNT    30    //just to save RAM - we should calculate this on the fly though
-#define FRAMERATE      30    //how many frames per second to we ideally want to run
-#define MAX_LOAD_MA    1000  //how many mA are we allowed to draw, at 5 volts
+#define PIN             8
+#define NUMPIXELS       120
+#define GLOBE_SIZE      2     //How many leds are inside of one globe
+#define GLOBE_SPACING   10    //this minus GLOBE_SIZE equals the amount of LEDs between globes
+#define GLOBE_COUNT     30    //just to save RAM - we should calculate this on the fly though
+#define FRAMERATE       30    //how many frames per second to we ideally want to run
+#define MAX_LOAD_MA     1000  //how many mA are we allowed to draw, at 5 volts
+
+#define S_FIRE_COOLING  55    //How much does the air cool as it rises?
+#define S_FIRE_SPARKING 120   //What chance (out of 255) is there that a new spark will be lit?
 
 unsigned long lastFrame;
 unsigned long lastCleanup;
@@ -41,7 +44,8 @@ typedef enum {
   S_PAPARAZZI,
   S_COLOR,
   S_SPARKLE,
-  S_DRIP
+  S_DRIP,
+  S_FIRE
 } sstate_t;
 sstate_t s = S_NOTOUCH;
 #define S_RAINBOW_SNAKE_LENGTH 15
@@ -153,8 +157,8 @@ void runG_VERSION() {
   if ( millis() > 10000 ) {
     //It has been 10 seconds. Do something more interesting with our life.
     if ( s == S_NOTOUCH ) {
-      s=S_DRIP;
-      g=G_NOTOUCH;
+      s=S_FIRE;
+      g=G_RAINBOW;
     }
   }
 }
@@ -280,7 +284,31 @@ void runS_DRIP() {
   }
   
 }
-
+//from pastebin.com/xYEpxqgq 
+void runS_FIRE() {
+  // Array of temperature readings at each simulation cell
+  static byte heat[NUMPIXELS];
+  // Step 1.  Cool down every cell a little
+  for( int i = 0; i < NUMPIXELS; i++) {
+    heat[i] = qsub8( heat[i],  random8(0, ((S_FIRE_COOLING * 10) / NUMPIXELS) + 2));
+  }
+		    
+  // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+  for( int k= NUMPIXELS - 3; k > 0; k--) {
+    heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
+  }
+			         
+  // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+  if( random8() < S_FIRE_SPARKING ) {
+    int y = random8(7);
+    heat[y] = qadd8( heat[y], random8(160,255) );
+  }
+								  
+  // Step 4.  Map from heat cells to LED colors
+  for( int j = 0; j < NUMPIXELS; j++) {
+    pixels[j] = HeatColor( heat[j]);
+  }
+}
 
 void runGlobes() {
   if ( g == G_RAINBOW ) {
@@ -312,6 +340,8 @@ void runStrip() {
     runS_SPARKLE();
   } else if ( s == S_DRIP ) {
     runS_DRIP();
+  } else if ( s == S_FIRE ) {
+    runS_FIRE();
   }
 }
 
@@ -412,6 +442,7 @@ void processControlStream(Stream &stream) {
   else if ( stream.peek() == (byte)'K' ) { s=S_SPARKLE; stream.read(); }
   else if ( stream.peek() == (byte)'N' ) { s=S_NOTOUCH; stream.read(); }
   else if ( stream.peek() == (byte)'D' ) { s=S_DRIP; g=G_NOTOUCH; stream.read(); }
+  else if ( stream.peek() == (byte)'I' ) { s=S_FIRE; stream.read(); }
 
   else if ( stream.peek() == (byte)'!' ) { softwareReset(); }
   
