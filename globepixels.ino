@@ -62,6 +62,7 @@ void setup() {
 
   FastLED.addLeds<NEOPIXEL, PIN>(pixels, NUMPIXELS);
   set_max_power_in_volts_and_milliamps(5,MAX_LOAD_MA); //assuming 5 volts
+  FastLED.setCorrection(TypicalSMD5050);
   g = G_VERSION;
   s = S_NOTOUCH;
   Serial.println("#leds up");
