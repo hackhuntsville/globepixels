@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION         8
+#define VERSION         10
 
 #define PIN             8
 #define NUMPIXELS       120
@@ -15,8 +15,8 @@
 #define FRAMERATE       30    //how many frames per second to we ideally want to run
 #define MAX_LOAD_MA     1000  //how many mA are we allowed to draw, at 5 volts
 
-#define S_FIRE_COOLING  55    //How much does the air cool as it rises?
-#define S_FIRE_SPARKING 120   //What chance (out of 255) is there that a new spark will be lit?
+#define S_FIRE_COOLING  75    //How much does the air cool as it rises?
+#define S_FIRE_SPARKING 180   //What chance (out of 255) is there that a new spark will be lit?
 
 unsigned long lastFrame;
 unsigned long lastCleanup;
@@ -27,6 +27,7 @@ CRGB pixels[NUMPIXELS];
 
 typedef enum {
   G_NOTOUCH,
+  G_STRIP, //don't touch the globes, but render them. This is so the strip effect can write to the globes.
   G_RAINBOW,
   G_BLANK,
   G_COLOR,
@@ -134,6 +135,16 @@ void runG_BLANK() {
     setGlobe(i,0);
   }
 }
+void runG_STRIP() {
+  //While our strip effect is running, let's set the globe values in RAM
+  //to whatever the strip is writing to the inside of the globes. That
+  //way when we change effects it will not just blank all the pixels
+  //or do something else undesireable.
+  for ( int globe_num=0; globe_num<GLOBE_COUNT; globe_num++ ) {
+    setGlobe(globe_num, pixels[globe_num*GLOBE_SPACING]);
+  }
+}
+
 CRGB g_color = CRGB(80,141,172);
 void runG_COLOR() {
   for ( int i=0; i<GLOBE_COUNT; i++ ) {
@@ -159,7 +170,7 @@ void runG_VERSION() {
     //It has been 10 seconds. Do something more interesting with our life.
     if ( s == S_NOTOUCH ) {
       s=S_FIRE;
-      g=G_RAINBOW;
+      g=G_NOTOUCH;
     }
   }
 }
@@ -220,7 +231,6 @@ void runS_PAPARAZZI() {
     //we do
     pixels[random(0,NUMPIXELS)] = s_color;
   }
-  //delay(random(75,100));
 }
 void runS_COLOR() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
@@ -316,6 +326,8 @@ void runGlobes() {
     runG_RAINBOW();
   } else if ( g == G_BLANK ) {
     runG_BLANK();
+  } else if ( g == G_STRIP ) {
+    runG_STRIP();
   } else if ( g == G_COLOR ) {
     runG_COLOR();
   } else if ( g == G_STROBEONCE ) {
@@ -380,7 +392,9 @@ void loop() {
     digitalWrite(13,HIGH); //tell the user we're done
   
     //Serial.print("#begin write at "); Serial.println(millis());
-    writeGlobes();
+    if ( g != G_NOTOUCH ) {
+        writeGlobes();
+    }
 
     //make sure we aren't overloading, and dim if we are.
     estimateLoad(); //TODO - actually do something with this
@@ -389,7 +403,8 @@ void loop() {
     show_at_max_brightness_for_power();
 
   } else {
-    sloshCount++; //we didn't do anything so let's indicate that we had a spare cycle.
+    sloshCount++; //we didn't do anything so let's indicate that we had a spare mS.
+    FastLED.delay(1); //give it time to do temporal dithering
   }
 
   processControlStream(Serial);
@@ -442,8 +457,8 @@ void processControlStream(Stream &stream) {
   else if ( stream.peek() == (byte)'P' ) { s=S_PAPARAZZI; stream.read(); }
   else if ( stream.peek() == (byte)'K' ) { s=S_SPARKLE; stream.read(); }
   else if ( stream.peek() == (byte)'N' ) { s=S_NOTOUCH; stream.read(); }
-  else if ( stream.peek() == (byte)'D' ) { s=S_DRIP; g=G_NOTOUCH; stream.read(); }
-  else if ( stream.peek() == (byte)'I' ) { s=S_FIRE; stream.read(); }
+  else if ( stream.peek() == (byte)'D' ) { s=S_DRIP; g=G_STRIP; stream.read(); }
+  else if ( stream.peek() == (byte)'I' ) { s=S_FIRE; g=G_NOTOUCH; stream.read(); }
 
   else if ( stream.peek() == (byte)'!' ) { softwareReset(); }
   
@@ -528,3 +543,4 @@ uint8_t Blue(uint32_t color)
 void softwareReset() { // Restarts program from beginning but does not reset the peripherals and registers
   asm volatile ("  jmp 0");  
 } 
+
