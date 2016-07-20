@@ -5,15 +5,15 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION         10
+#define VERSION         11
 
 #define PIN             8
 #define NUMPIXELS       120
 #define GLOBE_SIZE      2     //How many leds are inside of one globe
 #define GLOBE_SPACING   10    //this minus GLOBE_SIZE equals the amount of LEDs between globes
 #define GLOBE_COUNT     30    //just to save RAM - we should calculate this on the fly though
-#define FRAMERATE       30    //how many frames per second to we ideally want to run
-#define MAX_LOAD_MA     1000  //how many mA are we allowed to draw, at 5 volts
+#define FRAMERATE       60    //how many frames per second to we ideally want to run
+#define MAX_LOAD_MA     400  //how many mA are we allowed to draw, at 5 volts
 
 #define S_FIRE_COOLING  75    //How much does the air cool as it rises?
 #define S_FIRE_SPARKING 180   //What chance (out of 255) is there that a new spark will be lit?
@@ -227,7 +227,7 @@ void runS_RAIN() {
 void runS_PAPARAZZI() {
   runS_BLANK();
   //decide if we want to add a new raindrop
-  if ( random(0,100) < 60 ) {
+  if ( random(0,100) < 40 ) {
     //we do
     pixels[random(0,NUMPIXELS)] = s_color;
   }
