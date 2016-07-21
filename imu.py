@@ -2,6 +2,8 @@ from snappy_mpu6050 import *
 
 @setHook(HOOK_STARTUP)
 def setup():
+    setPinDir(17, True)
+    writePin(17, False)
     init_imu(27, 29)
 
 @setHook(HOOK_100MS)
