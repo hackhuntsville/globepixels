@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION         11
+#define VERSION         13
 
 #define PIN             8
 #define NUMPIXELS       120
@@ -38,7 +38,7 @@ gstate_t g = G_NOTOUCH;
 
 typedef enum {
   S_NOTOUCH,
-  S_RAINBOW,
+  S_SNAKE,
   S_BLANK,
   S_FADE,
   S_RAIN,
@@ -46,10 +46,11 @@ typedef enum {
   S_COLOR,
   S_SPARKLE,
   S_DRIP,
-  S_FIRE
+  S_FIRE,
+  S_DRIPBOW
 } sstate_t;
 sstate_t s = S_NOTOUCH;
-#define S_RAINBOW_SNAKE_LENGTH 15
+#define S_SNAKE_LENGTH 15
 
 void setup() {
 
@@ -179,7 +180,8 @@ CRGB s_color = CRGB(80,141,172);
 
 int s_snake_offset = 0;
 int s_snake_end = 0;
-void runS_RAINBOW() {
+bool s_single_color = false;
+void runS_SNAKE() {
 
   runS_FADE(); //fade the entire strip first
 
@@ -191,13 +193,17 @@ void runS_RAINBOW() {
   }
 
   //Serial.print("#Snake top:"); Serial.println(s_snake_offset);
-  for ( int i = 0; i < S_RAINBOW_SNAKE_LENGTH; i++ ) {
+  for ( int i = 0; i < S_SNAKE_LENGTH; i++ ) {
     int px = s_snake_offset + i;
     if ( px >= NUMPIXELS ) {
       //we're off the top of the strip... write to the corresponding pixel at the bottom instead
       px = px-NUMPIXELS;
     }
-    pixels[px] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
+    if ( s_single_color ) {
+      pixels[px] = s_color;
+    } else {
+      pixels[px] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
+    }
   }
  
   s_snake_offset++;
@@ -285,9 +291,9 @@ void runS_DRIP() {
     }
     //Serial.print(" new scale "); Serial.println(drip_scale);
     //Serial.print("#DRIP setting globe "); Serial.println(which);
-    setGlobe(which,s_color.scale8(CRGB(drip_scale,drip_scale,drip_scale)));
+    setGlobe(which,g_color.scale8(CRGB(drip_scale,drip_scale,drip_scale)));
   } else { //it's not a globe, do something cool in between.
-    pixels[drip_pos] = s_color.scale8(CRGB(128,128,128));
+    pixels[drip_pos] = g_color.scale8(CRGB(128,128,128));
     if ( !isInGlobe(drip_pos+1) ) {
       pixels[drip_pos+1] = 0;
     }
@@ -320,6 +326,10 @@ void runS_FIRE() {
     pixels[j] = HeatColor( heat[j]);
   }
 }
+void runS_DRIPBOW() {
+  runS_SNAKE();
+  runS_DRIP();
+}
 
 void runGlobes() {
   if ( g == G_RAINBOW ) {
@@ -337,8 +347,8 @@ void runGlobes() {
   }
 }
 void runStrip() {
-  if ( s == S_RAINBOW ) {
-    runS_RAINBOW();
+  if ( s == S_SNAKE ) {
+    runS_SNAKE();
   } else if ( s == S_RAIN ) {
     runS_RAIN();
   } else if ( s == S_PAPARAZZI ) {
@@ -355,6 +365,8 @@ void runStrip() {
     runS_DRIP();
   } else if ( s == S_FIRE ) {
     runS_FIRE();
+  } else if ( s == S_DRIPBOW ) {
+    runS_DRIPBOW();
   }
 }
 
@@ -448,7 +460,8 @@ void processControlStream(Stream &stream) {
   else if ( stream.peek() == (byte)'n' ) { g=G_NOTOUCH; stream.read(); }
   else if ( stream.peek() == (byte)'v' ) { g=G_VERSION; stream.read(); } //This won't work for long. It bails after a few millis.
 
-  else if ( stream.peek() == (byte)'R' ) { s=S_RAINBOW; stream.read(); }
+  else if ( stream.peek() == (byte)'R' ) { s_single_color = false; s=S_SNAKE; stream.read(); } //rainbow
+  else if ( stream.peek() == (byte)'E' ) { s_single_color = true; s=S_SNAKE; stream.read(); } //snake
   else if ( stream.peek() == (byte)'B' ) { s=S_BLANK; stream.read(); }
   else if ( stream.peek() == (byte)'F' ) { s=S_FADE; stream.read(); }
   else if ( stream.peek() == (byte)'C' ) { s_color = getColorFromStream(stream); } //set color
@@ -459,6 +472,7 @@ void processControlStream(Stream &stream) {
   else if ( stream.peek() == (byte)'N' ) { s=S_NOTOUCH; stream.read(); }
   else if ( stream.peek() == (byte)'D' ) { s=S_DRIP; g=G_STRIP; stream.read(); }
   else if ( stream.peek() == (byte)'I' ) { s=S_FIRE; g=G_NOTOUCH; stream.read(); }
+  else if ( stream.peek() == (byte)'W' ) { s=S_DRIPBOW; g=G_STRIP; stream.read(); } //drip on globes; rainbow on the rest
 
   else if ( stream.peek() == (byte)'!' ) { softwareReset(); }
   
@@ -543,4 +557,5 @@ uint8_t Blue(uint32_t color)
 void softwareReset() { // Restarts program from beginning but does not reset the peripherals and registers
   asm volatile ("  jmp 0");  
 } 
+
 
