@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION         13
+#define VERSION         14 
 
 #define PIN             8
 #define NUMPIXELS       120
@@ -64,6 +64,7 @@ void setup() {
 
   FastLED.addLeds<NEOPIXEL, PIN>(pixels, NUMPIXELS);
   set_max_power_in_volts_and_milliamps(5,MAX_LOAD_MA); //assuming 5 volts
+  set_max_power_indicator_LED(13); //blink led 13 when would've overdrawn
   FastLED.setCorrection(TypicalSMD5050);
   g = G_VERSION;
   s = S_NOTOUCH;
@@ -378,10 +379,10 @@ void loop() {
 
   if ( (millis() - lastCleanup) > 1000 ) {
     double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
-    float load = estimateLoad();
     Serial.print("#FRAME RATE: "); Serial.print(fr);
     Serial.print(" - SLOSH: "); Serial.print(sloshCount);
-    Serial.print(" - LOAD: "); Serial.println(load);
+    uint32_t loadmw = calculate_unscaled_power_mW(pixels,NUMPIXELS);
+    Serial.print(" - LOAD: "); Serial.print(loadmw); Serial.print("mW ("); Serial.print(loadmw/5); Serial.println("mA)");
     
     lastCleanup = millis();
     frameCount = 0; sloshCount = 0;
@@ -408,9 +409,6 @@ void loop() {
         writeGlobes();
     }
 
-    //make sure we aren't overloading, and dim if we are.
-    estimateLoad(); //TODO - actually do something with this
-
     //FastLED.show();
     show_at_max_brightness_for_power();
 
@@ -425,26 +423,6 @@ void loop() {
 }
 
 //My utilities below
-
-float estimateLoad() {
-  //thanks from https://github.com/teachop/xcore_neopixel_buffered/blob/master/module_neopixel/src/neopixel.xc#L38
-  float load = 0;
-  uint32_t color = 0;
-  int element = 0;
-  for ( int i=0; i<NUMPIXELS; i++ ) {
-    color = pixels[i];
-    element = Red(color);
-    load += ((float)element/255)*20;
-    //Serial.print("Red val is "); Serial.print(element);
-    //Serial.print(" so load is "); Serial.print((((float)element/255)*20)); Serial.println("mA");
-    element = Green(color);
-    load += ((float)element/255)*20;
-    element = Blue(color);
-    load += ((float)element/255)*20;
-    //Serial.println(load);
-  }
-  return load;
-}
 
 void processControlStream(Stream &stream) {
 
