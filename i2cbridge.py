@@ -28,3 +28,6 @@ def report(color):
     i2cWrite(I2C_ADDR + command, 1000, True)
     return command
 
+def command(cmd):
+    i2cWrite(I2C_ADDR + cmd, 1000, True)
+    return "Command sent: " + cmd
