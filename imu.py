@@ -28,17 +28,17 @@ def timer():
     z = get_imu_accel("z")
 
     if x > 15000:
-        new_color = "purple"
-    elif x < -15000:
-        new_color = "red"
-    elif z > 15000:
-        new_color = "blue"
-    elif z < -15000:
-        new_color = "green"
-    elif y > 15000:
-        new_color = "yellow"
-    elif y < -15000:
         new_color = "orange"
+    elif x < -15000:
+        new_color = "yellow"
+    elif z > 15000:
+        new_color = "red"
+    elif z < -15000:
+        new_color = "purple"
+    elif y > 15000:
+        new_color = "blue"
+    elif y < -15000:
+        new_color = "green"
     else:
         return
 
