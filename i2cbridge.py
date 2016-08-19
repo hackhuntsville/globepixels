@@ -25,6 +25,7 @@ def report(color):
     elif color == "orange":
         command = "6"
 
-    i2cWrite(I2C_ADDR + command, 10, True)
+    for _ in xrange(0,100):
+        i2cWrite(I2C_ADDR + command, 10, True)
     return command
 
