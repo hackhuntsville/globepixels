@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION         14 
+#define VERSION         15
 
 #define PIN             8
 #define NUMPIXELS       120
@@ -426,35 +426,37 @@ void loop() {
 
 void processControlStream(Stream &stream) {
 
-  if ( stream.peek() == -1 ) {
-    //do nothing. There is nothing to read
-  }
-  //we must remember to pop the command char off, if it's a single-byte command.
-  else if ( stream.peek() == (byte)'r' ) { g=G_RAINBOW; stream.read(); }
-  else if ( stream.peek() == (byte)'b' ) { g=G_BLANK; stream.read(); }
-  else if ( stream.peek() == (byte)'c' ) { g_color = getColorFromStream(stream); } //set color
-  else if ( stream.peek() == (byte)'o' ) { g=G_COLOR; stream.read(); } //color mode
-  else if ( stream.peek() == (byte)'s' ) { g=G_STROBEONCE; stream.read(); }
-  else if ( stream.peek() == (byte)'n' ) { g=G_NOTOUCH; stream.read(); }
-  else if ( stream.peek() == (byte)'v' ) { g=G_VERSION; stream.read(); } //This won't work for long. It bails after a few millis.
-
-  else if ( stream.peek() == (byte)'R' ) { s_single_color = false; s=S_SNAKE; stream.read(); } //rainbow
-  else if ( stream.peek() == (byte)'E' ) { s_single_color = true; s=S_SNAKE; stream.read(); } //snake
-  else if ( stream.peek() == (byte)'B' ) { s=S_BLANK; stream.read(); }
-  else if ( stream.peek() == (byte)'F' ) { s=S_FADE; stream.read(); }
-  else if ( stream.peek() == (byte)'C' ) { s_color = getColorFromStream(stream); } //set color
-  else if ( stream.peek() == (byte)'O' ) { s=S_COLOR; stream.read(); } //color mode
-  else if ( stream.peek() == (byte)'A' ) { s=S_RAIN; stream.read(); }
-  else if ( stream.peek() == (byte)'P' ) { s=S_PAPARAZZI; stream.read(); }
-  else if ( stream.peek() == (byte)'K' ) { s=S_SPARKLE; stream.read(); }
-  else if ( stream.peek() == (byte)'N' ) { s=S_NOTOUCH; stream.read(); }
-  else if ( stream.peek() == (byte)'D' ) { s=S_DRIP; g=G_STRIP; stream.read(); }
-  else if ( stream.peek() == (byte)'I' ) { s=S_FIRE; g=G_NOTOUCH; stream.read(); }
-  else if ( stream.peek() == (byte)'W' ) { s=S_DRIPBOW; g=G_STRIP; stream.read(); } //drip on globes; rainbow on the rest
-
-  else if ( stream.peek() == (byte)'!' ) { softwareReset(); }
+  switch ( (char)stream.peek() ) {
   
-  else { Serial.print((char)stream.read()); Serial.println("?"); }
+    case -1: break; //do nothing. There is nothing to read
+    //we must remember to pop the command char off, if it's a single-byte command.
+    case 'r': g=G_RAINBOW; stream.read(); break;
+    case 'b': g=G_BLANK; stream.read(); break;
+    case 'c': g_color = getColorFromStream(stream); break; //set color
+    case 'o': g=G_COLOR; stream.read(); break; //color mode
+    case 's': g=G_STROBEONCE; stream.read(); break;
+    case 'n': g=G_NOTOUCH; stream.read(); break;
+    case 'v': g=G_VERSION; stream.read(); break; //This won't work for long. It bails after a few millis.
+  
+    case 'R': s_single_color = false; s=S_SNAKE; stream.read(); break; //rainbow
+    case 'E': s_single_color = true; s=S_SNAKE; stream.read(); break; //snake
+    case 'B': s=S_BLANK; stream.read(); break;
+    case 'F': s=S_FADE; stream.read(); break;
+    case 'C': s_color = getColorFromStream(stream); break; //set color
+    case 'O': s=S_COLOR; stream.read(); break; //color mode
+    case 'A': s=S_RAIN; stream.read(); break;
+    case 'P': s=S_PAPARAZZI; stream.read(); break;
+    case 'K': s=S_SPARKLE; stream.read(); break;
+    case 'N': s=S_NOTOUCH; stream.read(); break;
+    case 'D': s=S_DRIP; g=G_STRIP; stream.read(); break;
+    case 'I': s=S_FIRE; g=G_NOTOUCH; stream.read(); break;
+    case 'W': s=S_DRIPBOW; g=G_STRIP; stream.read(); break; //drip on globes; rainbow on the rest
+  
+    case '!': softwareReset(); break;
+    
+    default: Serial.print((char)stream.read()); Serial.println("?");
+  
+  }
 
 }
 
