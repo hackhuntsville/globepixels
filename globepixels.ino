@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION		16 
+#define VERSION		17
 
 #define PIN             8
 #define NUMPIXELS       120
@@ -372,7 +372,9 @@ void runStrip() {
 }
 
 void handleWire(int count) {
-  Serial.println("#Got i2c");
+  Serial.print("#Got i2c (");
+  Serial.print(count);
+  Serial.println(" bytes)");
 }
 
 void loop() {
