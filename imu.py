@@ -12,6 +12,13 @@ def setup():
     writePin(17, False)
     init_imu(27, 29)
 
+def get_color():
+    return current_color
+
+@setHook(HOOK_1S)
+def update():
+    mcastRpc(1,3,"report", current_color)
+
 @setHook(HOOK_10MS)
 def timer():
     global MAX_DEDUPE, dedupe_count, current_color
