@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION         15
+#define VERSION		16 
 
 #define PIN             8
 #define NUMPIXELS       120
@@ -426,7 +426,7 @@ void loop() {
 
 void processControlStream(Stream &stream) {
 
-  switch ( (char)stream.peek() ) {
+  switch ( stream.peek() ) {
   
     case -1: break; //do nothing. There is nothing to read
     //we must remember to pop the command char off, if it's a single-byte command.
@@ -451,6 +451,13 @@ void processControlStream(Stream &stream) {
     case 'D': s=S_DRIP; g=G_STRIP; stream.read(); break;
     case 'I': s=S_FIRE; g=G_NOTOUCH; stream.read(); break;
     case 'W': s=S_DRIPBOW; g=G_STRIP; stream.read(); break; //drip on globes; rainbow on the rest
+
+    case '1': s_color = CRGB(255,13,255); stream.read(); break;	//start on purple. if you don't keep up with me, you're finished
+    case '2': s_color = CRGB(255,0,0); stream.read(); break;	//red
+    case '3': s_color = CRGB(0,255,0); stream.read(); break;	//green
+    case '4': s_color = CRGB(0,0,255); stream.read(); break;	//blue
+    case '5': s_color = CRGB(255,255,0); stream.read(); break;	//yellow
+    case '6': s_color = CRGB(255,90,0);	stream.read(); break;	//orange
   
     case '!': softwareReset(); break;
     
