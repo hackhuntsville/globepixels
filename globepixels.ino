@@ -22,6 +22,7 @@ unsigned long lastFrame;
 unsigned long lastCleanup;
 unsigned long frameCount;
 unsigned long sloshCount;
+unsigned long lastEffectChange;
 CRGB globes[GLOBE_COUNT];
 CRGB pixels[NUMPIXELS];
 
@@ -89,7 +90,12 @@ void setup() {
   Wire.setTimeout(100);
   Serial.println("#wire up");
 
-  lastFrame = millis(); lastCleanup = millis(); frameCount = 0; sloshCount = 0;
+  lastFrame = millis();
+  lastCleanup = millis();
+  lastEffectChange = millis();
+  frameCount = 0;
+  sloshCount = 0;
+  
   Serial.print("#up at "); Serial.println(lastFrame);
   
 }
@@ -383,7 +389,9 @@ void loop() {
   if ( (millis() - lastCleanup) > 1000 ) {
     //it's time to do our every-1s tasks.
 
-    
+    if ( (millis() - lastEffectChange) > 10000 ) {
+      //it's time to change effects.
+    }
 
     double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
     Serial.print("#FRAME RATE: "); Serial.print(fr);
@@ -459,12 +467,12 @@ void processControlStream(Stream &stream) {
     case 'I': s=S_FIRE; g=G_NOTOUCH; stream.read(); break;
     case 'W': s=S_DRIPBOW; g=G_STRIP; stream.read(); break; //drip on globes; rainbow on the rest
 
-    case '1': s_color = CRGB(255,13,255); stream.read(); break;	//start on purple. if you don't keep up with me, you're finished
-    case '2': s_color = CRGB(255,0,0); stream.read(); break;	//red
-    case '3': s_color = CRGB(0,255,0); stream.read(); break;	//green
-    case '4': s_color = CRGB(0,0,255); stream.read(); break;	//blue
-    case '5': s_color = CRGB(255,255,0); stream.read(); break;	//yellow
-    case '6': s_color = CRGB(255,90,0);	stream.read(); break;	//orange
+    case '1': s_color = CRGB::Fuchsia; stream.read(); break;	//start on purple. if you don't keep up with me, you're finished
+    case '2': s_color = CRGB::Red; stream.read(); break;	//red
+    case '3': s_color = CRGB::Green; stream.read(); break;	//green
+    case '4': s_color = CRGB::Blue; stream.read(); break;	//blue
+    case '5': s_color = CRGB::Yellow; stream.read(); break;	//yellow
+    case '6': s_color = CRGB::OrangeRed; stream.read(); break;	//orange
   
     case '<': softwareReset(); break;
     
