@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION		21
+#define VERSION		23
 
 #define PIN             8
 #define NUMPIXELS       150
@@ -181,6 +181,7 @@ void runG_VERSION() {
       }
     }
   }
+  /*
   if ( millis() > 10000 ) {
     //It has been 10 seconds. Do something more interesting with our life.
     if ( s == S_NOTOUCH ) {
@@ -188,6 +189,7 @@ void runG_VERSION() {
       g=G_NOTOUCH;
     }
   }
+  */
 }
 
 CRGB s_color = CRGB(80,141,172);
@@ -391,10 +393,14 @@ void loop() {
 
     if ( (millis() - lastEffectChange) > 60000 ) {
       //it's time to change effects because we are idle.
-      switch ( rand() % 3 ) { //n possible effects, 0 through n-1
-        case 0: s_single_color = false; s=S_SNAKE; break;
-	case 1: s=S_DRIPBOW; g=G_STRIP; break;
-	case 2: s=S_FIRE; g=G_NOTOUCH; break;
+      sstate_t new_state = s;
+      g_color = s_color; g=G_COLOR; 
+      while ( new_state == s ) {
+        switch ( rand() % 3 ) { //n possible effects, 0 through n-1
+          case 0: s_single_color = false; s=S_SNAKE; break;
+          case 1: setAllGlobes(0); runGlobes(); s=S_DRIPBOW; g=G_STRIP; break;
+          case 2: s=S_FIRE; g=G_NOTOUCH; break;
+        }
       }
       lastEffectChange = millis();
     }
@@ -486,6 +492,17 @@ void processControlStream(Stream &stream) {
   
   }
 
+}
+
+void pickRandomColorEffect() {
+  switch (rand() % 4) {
+    case 0: s_single_color = true; s=S_SNAKE; break;
+    case 1: s=S_RAIN;
+    case 2: s=S_PAPARAZZI;
+    case 3: s=S_SPARKLE;
+  }
+  g_color=s_color; g=G_COLOR;
+  lastEffectChange = millis();
 }
 
 CRGB getColorFromStream(Stream &stream) {
