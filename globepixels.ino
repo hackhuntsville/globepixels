@@ -5,14 +5,13 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION		18 
+#define VERSION		21
 
 #define PIN             8
-#define NUMPIXELS       120
+#define NUMPIXELS       150
 #define GLOBE_SIZE      2     //How many leds are inside of one globe
 #define GLOBE_SPACING   10    //this minus GLOBE_SIZE equals the amount of LEDs between globes
 #define GLOBE_COUNT     30    //just to save RAM - we should calculate this on the fly though
-#define GLOBE_REVERSE	true  //start globes at end of strip
 #define FRAMERATE       60    //how many frames per second to we ideally want to run
 #define MAX_LOAD_MA     400  //how many mA are we allowed to draw, at 5 volts
 
@@ -119,11 +118,7 @@ void writeGlobes() {
     int globe_pos = globe_num*GLOBE_SPACING;
     for ( int led_pos=globe_pos; led_pos<globe_pos+GLOBE_SIZE; led_pos++ ) {
       if ( led_pos < NUMPIXELS ) { //don't overrun the strand you idiot
-    	if ( GLOBE_REVERSE ) {
-	  pixels[NUMPIXELS-led_pos-1] = globes[globe_num];
-        } else {
-	  pixels[led_pos] = globes[globe_num];
-        }
+        pixels[NUMPIXELS-1-led_pos] = globes[globe_num];
       }
     }
   }
@@ -161,7 +156,7 @@ void runG_STRIP() {
   //way when we change effects it will not just blank all the pixels
   //or do something else undesireable.
   for ( int globe_num=0; globe_num<GLOBE_COUNT; globe_num++ ) {
-    setGlobe(globe_num, pixels[globe_num*GLOBE_SPACING]);
+    setGlobe(globe_num, pixels[NUMPIXELS-1-globe_num*GLOBE_SPACING]);
   }
 }
 
@@ -216,9 +211,9 @@ void runS_SNAKE() {
       px = px-NUMPIXELS;
     }
     if ( s_single_color ) {
-      pixels[px] = s_color;
+      pixels[NUMPIXELS-1-px] = s_color;
     } else {
-      pixels[px] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
+      pixels[NUMPIXELS-1-px] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
     }
   }
  
@@ -227,12 +222,12 @@ void runS_SNAKE() {
 }
 void runS_BLANK() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    pixels[i] = 0;
+    pixels[NUMPIXELS-1-i] = 0;
   }
 }
 void runS_FADE() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    pixels[i].fadeToBlackBy(32); //operates in place
+    pixels[NUMPIXELS-1-i].fadeToBlackBy(32); //operates in place
   }
 }
 void runS_RAIN() {
@@ -243,7 +238,7 @@ void runS_RAIN() {
   //decide if we want to add a new raindrop
   if ( random(0,2) == 0 ) {
     //we do
-    pixels[random(0,NUMPIXELS)] = s_color;
+    pixels[NUMPIXELS-1-random(0,NUMPIXELS)] = s_color;
   }
 }
 void runS_PAPARAZZI() {
@@ -251,20 +246,20 @@ void runS_PAPARAZZI() {
   //decide if we want to add a new raindrop
   if ( random(0,100) < 40 ) {
     //we do
-    pixels[random(0,NUMPIXELS)] = s_color;
+    pixels[NUMPIXELS-1-random(0,NUMPIXELS)] = s_color;
   }
 }
 void runS_COLOR() {
   for ( int i=0; i<NUMPIXELS; i++ ) {
-    pixels[i] = s_color;
+    pixels[NUMPIXELS-1-i] = s_color;
   }
 }
 void runS_SPARKLE() {
   for ( int i=0; i<25; i++ ) { 
     if ( random(0,100) < 15 ) {
-      pixels[random(0,NUMPIXELS)] = s_color; //light one
+      pixels[NUMPIXELS-1-random(0,NUMPIXELS)] = s_color; //light one
     } else {
-      pixels[random(0,NUMPIXELS)] = 0; //extinguish one
+      pixels[NUMPIXELS-1-random(0,NUMPIXELS)] = 0; //extinguish one
     }
   }
 }
@@ -280,7 +275,7 @@ void runS_DRIP() {
 
   if ( isInGlobe(drip_pos) ) {
     //Serial.print("#DRIP in globe ");
-    /*if ( drip_pos+1 < NUMPIXELS )*/ pixels[drip_pos+1] = 0; //blank the one above this because it's not in the globe. TODO: can this overrun our array?
+    /*if ( drip_pos+1 < NUMPIXELS )*/ pixels[NUMPIXELS-1-drip_pos-1] = 0; //blank the one above this because it's not in the globe. TODO: can this overrun our array?
     int which = whichGlobe(drip_pos);
     //Serial.print(which); Serial.print(" Scaling factor was "); Serial.print(drip_scale);
     if ( drip_flip == false ) {
@@ -306,9 +301,9 @@ void runS_DRIP() {
     //Serial.print("#DRIP setting globe "); Serial.println(which);
     setGlobe(which,g_color.scale8(CRGB(drip_scale,drip_scale,drip_scale)));
   } else { //it's not a globe, do something cool in between.
-    pixels[drip_pos] = g_color.scale8(CRGB(128,128,128));
+    pixels[NUMPIXELS-1-drip_pos] = g_color.scale8(CRGB(128,128,128));
     if ( !isInGlobe(drip_pos+1) ) {
-      pixels[drip_pos+1] = 0;
+      pixels[NUMPIXELS-1-drip_pos-1] = 0;
     }
     drip_pos--;
   }
@@ -336,7 +331,7 @@ void runS_FIRE() {
 								  
   // Step 4.  Map from heat cells to LED colors
   for( int j = 0; j < NUMPIXELS; j++) {
-    pixels[j] = HeatColor( heat[j]);
+    pixels[NUMPIXELS-1-j] = HeatColor( heat[j]);
   }
 }
 void runS_DRIPBOW() {
@@ -394,8 +389,14 @@ void loop() {
   if ( (millis() - lastCleanup) > 1000 ) {
     //it's time to do our every-1s tasks.
 
-    if ( (millis() - lastEffectChange) > 10000 ) {
-      //it's time to change effects.
+    if ( (millis() - lastEffectChange) > 60000 ) {
+      //it's time to change effects because we are idle.
+      switch ( rand() % 3 ) { //n possible effects, 0 through n-1
+        case 0: s_single_color = false; s=S_SNAKE; break;
+	case 1: s=S_DRIPBOW; g=G_STRIP; break;
+	case 2: s=S_FIRE; g=G_NOTOUCH; break;
+      }
+      lastEffectChange = millis();
     }
 
     double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
