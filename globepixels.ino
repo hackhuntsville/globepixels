@@ -25,6 +25,14 @@ unsigned long sloshCount;
 CRGB globes[GLOBE_COUNT];
 CRGB pixels[NUMPIXELS];
 
+int g_offset = 0;
+int s_snake_offset = 0;
+int s_snake_end = 0;
+bool s_single_color = false;
+int drip_pos = 0;
+byte drip_scale = 0;
+bool drip_flip = false;
+
 typedef enum {
   G_NOTOUCH,
   G_STRIP, //don't touch the globes, but render them. This is so the strip effect can write to the globes.
@@ -118,7 +126,6 @@ int whichGlobe(int pos) {
   return pos/GLOBE_SPACING;
 }
 
-int g_offset = 0;
 void runG_RAINBOW() {
   
   if ( g_offset > 255 ) {
@@ -179,9 +186,6 @@ void runG_VERSION() {
 
 CRGB s_color = CRGB(80,141,172);
 
-int s_snake_offset = 0;
-int s_snake_end = 0;
-bool s_single_color = false;
 void runS_SNAKE() {
 
   runS_FADE(); //fade the entire strip first
@@ -253,9 +257,6 @@ void runS_SPARKLE() {
     }
   }
 }
-int drip_pos = 0;
-byte drip_scale = 0;
-bool drip_flip = false;
 void runS_DRIP() {
 
   //Serial.print("#Drip pos = "); Serial.println(drip_pos);
@@ -380,6 +381,10 @@ void handleWire(int count) {
 void loop() {
 
   if ( (millis() - lastCleanup) > 1000 ) {
+    //it's time to do our every-1s tasks.
+
+    
+
     double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
     Serial.print("#FRAME RATE: "); Serial.print(fr);
     Serial.print(" - SLOSH: "); Serial.print(sloshCount);
