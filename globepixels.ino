@@ -461,7 +461,7 @@ void processControlStream(Stream &stream) {
     case '5': s_color = CRGB(255,255,0); stream.read(); break;	//yellow
     case '6': s_color = CRGB(255,90,0);	stream.read(); break;	//orange
   
-    case '!': softwareReset(); break;
+    case '<': softwareReset(); break;
     
     default: Serial.print((char)stream.read()); Serial.println("?");
   
