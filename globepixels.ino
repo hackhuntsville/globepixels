@@ -5,13 +5,14 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION		17
+#define VERSION		18 
 
 #define PIN             8
 #define NUMPIXELS       120
 #define GLOBE_SIZE      2     //How many leds are inside of one globe
 #define GLOBE_SPACING   10    //this minus GLOBE_SIZE equals the amount of LEDs between globes
 #define GLOBE_COUNT     30    //just to save RAM - we should calculate this on the fly though
+#define GLOBE_REVERSE	true  //start globes at end of strip
 #define FRAMERATE       60    //how many frames per second to we ideally want to run
 #define MAX_LOAD_MA     400  //how many mA are we allowed to draw, at 5 volts
 
@@ -118,7 +119,11 @@ void writeGlobes() {
     int globe_pos = globe_num*GLOBE_SPACING;
     for ( int led_pos=globe_pos; led_pos<globe_pos+GLOBE_SIZE; led_pos++ ) {
       if ( led_pos < NUMPIXELS ) { //don't overrun the strand you idiot
-	pixels[led_pos] = globes[globe_num];
+    	if ( GLOBE_REVERSE ) {
+	  pixels[NUMPIXELS-led_pos-1] = globes[globe_num];
+        } else {
+	  pixels[led_pos] = globes[globe_num];
+        }
       }
     }
   }
