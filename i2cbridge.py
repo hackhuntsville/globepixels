@@ -5,12 +5,14 @@ SDA = D4  #Uno A4 --> Pyduino D4
 
 I2C_ADDR = "\x10"
 
+last_command = "!"
+
 @setHook(HOOK_STARTUP)
 def init():
     i2cInit(True, SCL, SDA)
 
 def report(color):
-
+    global last_command
     command = "!"
     if color == "purple":
         command = "1"
@@ -24,8 +26,9 @@ def report(color):
         command = "5"
     elif color == "orange":
         command = "6"
-
-    i2cWrite(I2C_ADDR + command, 1000, True)
+    if command != last_command:
+        i2cWrite(I2C_ADDR + command, 1000, True)
+        last_command = command
     return command
 
 def command(cmd):
