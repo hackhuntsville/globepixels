@@ -5,18 +5,20 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION		23
+#define VERSION		24
 
 #define PIN             8
 #define NUMPIXELS       150
-#define GLOBE_SIZE      2     //How many leds are inside of one globe
-#define GLOBE_SPACING   10    //this minus GLOBE_SIZE equals the amount of LEDs between globes
-#define GLOBE_COUNT     30    //just to save RAM - we should calculate this on the fly though
-#define FRAMERATE       60    //how many frames per second to we ideally want to run
-#define MAX_LOAD_MA     400  //how many mA are we allowed to draw, at 5 volts
+#define GLOBE_SIZE      2	//How many leds are inside of one globe
+#define GLOBE_SPACING   10	//this minus GLOBE_SIZE equals the amount of LEDs between globes
+#define GLOBE_COUNT     30	//just to save RAM - we should calculate this on the fly though
+#define FRAMERATE       60	//how many frames per second to we ideally want to run
+#define MAX_LOAD_MA     400	//how many mA are we allowed to draw, at 5 volts
 
-#define S_FIRE_COOLING  75    //How much does the air cool as it rises?
-#define S_FIRE_SPARKING 180   //What chance (out of 255) is there that a new spark will be lit?
+#define S_FIRE_COOLING  75	//How much does the air cool as it rises?
+#define S_FIRE_SPARKING 180	//What chance (out of 255) is there that a new spark will be lit?
+
+#define S_DRIP_BLANK	true	//Do we blank every unused globe while dripping
 
 unsigned long lastFrame;
 unsigned long lastCleanup;
@@ -301,6 +303,9 @@ void runS_DRIP() {
     }
     //Serial.print(" new scale "); Serial.println(drip_scale);
     //Serial.print("#DRIP setting globe "); Serial.println(which);
+    if ( S_DRIP_BLANK ) {
+      setAllGlobes(0);
+    }
     setGlobe(which,g_color.scale8(CRGB(drip_scale,drip_scale,drip_scale)));
   } else { //it's not a globe, do something cool in between.
     pixels[NUMPIXELS-1-drip_pos] = g_color.scale8(CRGB(128,128,128));
@@ -398,7 +403,7 @@ void loop() {
       while ( new_state == s ) {
         switch ( rand() % 3 ) { //n possible effects, 0 through n-1
           case 0: s_single_color = false; s=S_SNAKE; break;
-          case 1: setAllGlobes(0); runGlobes(); s=S_DRIPBOW; g=G_STRIP; break;
+          case 1: runGlobes(); s=S_DRIPBOW; g=G_STRIP; break;
           case 2: s=S_FIRE; g=G_NOTOUCH; break;
         }
       }
