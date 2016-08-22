@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION			30
+#define VERSION			31
 
 #define PIN             	8
 #define NUMPIXELS       	150
@@ -37,9 +37,11 @@ int g_offset = 0;
 int s_snake_offset = 0;
 int s_snake_end = 0;
 bool s_single_color = false;
-int drip_pos = 0;
-byte drip_scale = 0;
-bool drip_flip = false;
+bool s_snake_scanner = false; //Larson scanner
+int s_drip_pos = 0;
+byte s_drip_scale = 0;
+bool s_drip_flip = false;
+
 bool inAttractMode = false;
 
 typedef enum {
@@ -207,7 +209,11 @@ CRGB s_color = CRGB(80,141,172);
 
 void runS_SNAKE() {
 
-  runS_FADE(); //fade the entire strip first
+  if ( s_snake_scanner ) {
+    runS_BLANK(); //blank the strip first
+  } else { 
+    runS_FADE(); //fade the entire strip first
+  }
 
   //now we start drawing the new snake on top of the existing pixels.
   //after a while the tail will fade all the way down.
@@ -223,14 +229,23 @@ void runS_SNAKE() {
       //we're off the top of the strip... write to the corresponding pixel at the bottom instead
       px = px-NUMPIXELS;
     }
+
+    CRGB c;
     if ( s_single_color ) {
-      pixels[NUMPIXELS-1-px] = s_color;
+      c = s_color;
     } else {
-      pixels[NUMPIXELS-1-px] = wheelForPos(s_snake_offset).fadeToBlackBy(128);
+      c = wheelForPos(s_snake_offset).fadeToBlackBy(128);
+    }
+    pixels[NUMPIXELS-1-px] = c;
+    if ( s_snake_scanner ) {
+      pixels[px] = c;
     }
   }
  
   s_snake_offset++;
+  if ( s_snake_scanner ) {
+    s_snake_offset++;
+  }
 
 }
 void runS_BLANK() {
@@ -278,50 +293,50 @@ void runS_SPARKLE() {
 }
 void runS_DRIP() {
 
-  //Serial.print("#Drip pos = "); Serial.println(drip_pos);
+  //Serial.print("#Drip pos = "); Serial.println(s_drip_pos);
 
-  if ( drip_pos <= 0 ) {
-    drip_pos = NUMPIXELS-1;
+  if ( s_drip_pos <= 0 ) {
+    s_drip_pos = NUMPIXELS-1;
   }
 
-  //Serial.print("#DRIP pos="); Serial.println(drip_pos);
+  //Serial.print("#DRIP pos="); Serial.println(s_drip_pos);
 
-  if ( isInGlobe(drip_pos) ) {
+  if ( isInGlobe(s_drip_pos) ) {
     //Serial.print("#DRIP in globe ");
-    /*if ( drip_pos+1 < NUMPIXELS )*/ pixels[NUMPIXELS-1-drip_pos-1] = 0; //blank the one above this because it's not in the globe. TODO: can this overrun our array?
-    int which = whichGlobe(drip_pos);
-    //Serial.print(which); Serial.print(" Scaling factor was "); Serial.print(drip_scale);
-    if ( drip_flip == false ) {
-      if ( drip_scale < 245 ) {
-        drip_scale += 10;
+    /*if ( s_drip_pos+1 < NUMPIXELS )*/ pixels[NUMPIXELS-1-s_drip_pos-1] = 0; //blank the one above this because it's not in the globe. TODO: can this overrun our array?
+    int which = whichGlobe(s_drip_pos);
+    //Serial.print(which); Serial.print(" Scaling factor was "); Serial.print(s_drip_scale);
+    if ( s_drip_flip == false ) {
+      if ( s_drip_scale < 245 ) {
+        s_drip_scale += 10;
       } else {
-        drip_scale=255;
-        drip_flip = true;
+        s_drip_scale=255;
+        s_drip_flip = true;
 	//Serial.print(" flip!");
       }
-    } else { //drip_flip is true; let's fade out instead;
-      if ( drip_scale > 10 ) {
-        drip_scale-=10;
+    } else { //s_drip_flip is true; let's fade out instead;
+      if ( s_drip_scale > 10 ) {
+        s_drip_scale-=10;
       } else {
-        drip_scale=0;
-        drip_flip=false;
-        while (drip_pos > 0 and isInGlobe(drip_pos)) {
-          drip_pos--;
+        s_drip_scale=0;
+        s_drip_flip=false;
+        while (s_drip_pos > 0 and isInGlobe(s_drip_pos)) {
+          s_drip_pos--;
         }
       }
     }
-    //Serial.print(" new scale "); Serial.println(drip_scale);
+    //Serial.print(" new scale "); Serial.println(s_drip_scale);
     //Serial.print("#DRIP setting globe "); Serial.println(which);
     if ( S_DRIP_BLANK ) {
       setAllGlobes(0);
     }
-    setGlobe(which,g_color.scale8(CRGB(drip_scale,drip_scale,drip_scale)));
+    setGlobe(which,g_color.scale8(CRGB(s_drip_scale,s_drip_scale,s_drip_scale)));
   } else { //it's not a globe, do something cool in between.
-    pixels[NUMPIXELS-1-drip_pos] = g_color.scale8(CRGB(128,128,128));
-    if ( !isInGlobe(drip_pos+1) ) {
-      pixels[NUMPIXELS-1-drip_pos-1] = 0;
+    pixels[NUMPIXELS-1-s_drip_pos] = g_color.scale8(CRGB(128,128,128));
+    if ( !isInGlobe(s_drip_pos+1) ) {
+      pixels[NUMPIXELS-1-s_drip_pos-1] = 0;
     }
-    drip_pos--;
+    s_drip_pos--;
   }
   
 }
@@ -481,8 +496,9 @@ void processControlStream(Stream &stream) {
     case 'n': g=G_NOTOUCH; stream.read(); break;
     case 'v': g=G_VERSION; stream.read(); break; //This won't work for long. It bails after a few millis.
   
-    case 'R': s_single_color = false; s=S_SNAKE; stream.read(); break; //rainbow
-    case 'E': s_single_color = true; s=S_SNAKE; stream.read(); break; //snake
+    case 'R': s_single_color = false; s_snake_scanner = false; s=S_SNAKE; stream.read(); break; //rainbow
+    case 'E': s_single_color = true; s_snake_scanner = false; s=S_SNAKE; stream.read(); break; //snake
+    case 'L': s_single_color = true; s_snake_scanner = true; s=S_SNAKE; stream.read(); break; //Larson scanner
     case 'B': s=S_BLANK; stream.read(); break;
     case 'F': s=S_FADE; stream.read(); break;
     case 'C': s_color = getColorFromStream(stream); break; //set color
@@ -524,11 +540,12 @@ void changePresetEffect() {
   sstate_t new_state = s;
   g=G_COLOR; //display the color on the globes by default
   while ( s == new_state ) {
-    switch (rand() % 4) { //pick a new effect
-      case 0: s_single_color = true; s=S_SNAKE; break;
+    switch (rand() % 5) { //pick a new effect
+      case 0: s_single_color = true; s_snake_scanner = false; s=S_SNAKE; break;
       case 1: s=S_RAIN; break;
       case 2: s=S_PAPARAZZI; break;
       case 3: s=S_SPARKLE; break;
+      case 4: s_single_color = true; s_snake_scanner = true; s=S_SNAKE; break;
     }
   }
   lastEffectChange = millis(); //we just set the effect
