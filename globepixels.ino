@@ -510,15 +510,17 @@ void processControlStream(Stream &stream) {
 
 void handleUserInput(CRGB c) {
   s_color = c;
+  g_color=s_color; //set the globe color to the same as the strip color
+
   if ( ( (millis() - lastUserInput) > EFFECT_TIMEOUT_IDLE ) && ( (millis() - lastEffectChange) > EFFECT_TIMEOUT_IDLE ) ) { //user hasn't touched me for 7 seconds and my effect has run for 7 seconds
     changePresetEffect();
   }
+  
   lastUserInput = millis(); //we just got user input
 }
 void changePresetEffect() {
-  g_color=s_color; //set the globe color to the same as the strip color
-  g=G_COLOR; //display that color on the globes
   sstate_t new_state = s;
+  g=G_COLOR; //display the color on the globes by default
   while ( s == new_state ) {
     switch (rand() % 4) { //pick a new effect
       case 0: s_single_color = true; s=S_SNAKE; break;
@@ -531,7 +533,8 @@ void changePresetEffect() {
 }
 void changeAttractEffect() {
   sstate_t new_state = s;
-  g_color = s_color; g=G_COLOR; 
+  g_color = s_color;
+  g=G_COLOR; 
   while ( new_state == s ) {
     switch ( rand() % 3 ) { //n possible effects, 0 through n-1
       case 0: s_single_color = false; s=S_SNAKE; break;
