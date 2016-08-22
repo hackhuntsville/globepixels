@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION			29
+#define VERSION			30
 
 #define PIN             	8
 #define NUMPIXELS       	150
@@ -84,7 +84,7 @@ void setup() {
   set_max_power_indicator_LED(13); //blink led 13 when would've overdrawn
   FastLED.setCorrection(TypicalSMD5050);
   runG_VERSION(); writeGlobes(); show_at_max_brightness_for_power(); delay(1000); //quickly write the version out for a second
-  g = G_NOTOUCH;
+  g = G_BLANK;
   s = S_RAIN;
 
   Serial.println("#leds up");
@@ -539,9 +539,9 @@ void changeAttractEffect() {
   g=G_COLOR; 
   while ( new_state == s ) {
     switch ( rand() % 3 ) { //n possible effects, 0 through n-1
-      case 0: s_single_color = false; s=S_SNAKE; break;
+      case 0: g=G_RAINBOW; s_single_color = false; s=S_SNAKE; break;
       case 1: runGlobes(); s_single_color = false; s=S_DRIPBOW; g=G_STRIP; break;
-      case 2: s=S_FIRE; g=G_NOTOUCH; break;
+      case 2: s=S_FIRE; g=G_BLANK; break;
     }
   }
   lastEffectChange = millis();
