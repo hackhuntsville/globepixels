@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION			28
+#define VERSION			29
 
 #define PIN             	8
 #define NUMPIXELS       	150
@@ -40,7 +40,7 @@ bool s_single_color = false;
 int drip_pos = 0;
 byte drip_scale = 0;
 bool drip_flip = false;
-bool inAttractMode = true;
+bool inAttractMode = false;
 
 typedef enum {
   G_NOTOUCH,
@@ -83,8 +83,10 @@ void setup() {
   set_max_power_in_volts_and_milliamps(5,MAX_LOAD_MA); //assuming 5 volts
   set_max_power_indicator_LED(13); //blink led 13 when would've overdrawn
   FastLED.setCorrection(TypicalSMD5050);
-  g = G_VERSION;
-  s = S_NOTOUCH;
+  runG_VERSION(); writeGlobes(); show_at_max_brightness_for_power(); delay(1000); //quickly write the version out for a second
+  g = G_NOTOUCH;
+  s = S_RAIN;
+
   Serial.println("#leds up");
   
   Wire.begin(8);
