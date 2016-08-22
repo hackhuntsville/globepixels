@@ -5,26 +5,31 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION		24
+#define VERSION			28
 
-#define PIN             8
-#define NUMPIXELS       150
-#define GLOBE_SIZE      2	//How many leds are inside of one globe
-#define GLOBE_SPACING   10	//this minus GLOBE_SIZE equals the amount of LEDs between globes
-#define GLOBE_COUNT     30	//just to save RAM - we should calculate this on the fly though
-#define FRAMERATE       60	//how many frames per second to we ideally want to run
-#define MAX_LOAD_MA     400	//how many mA are we allowed to draw, at 5 volts
+#define PIN             	8
+#define NUMPIXELS       	150
+#define GLOBE_SIZE      	2	//How many leds are inside of one globe
+#define GLOBE_SPACING   	10	//this minus GLOBE_SIZE equals the amount of LEDs between globes
+#define GLOBE_COUNT     	30	//just to save RAM - we should calculate this on the fly though
+#define FRAMERATE       	60	//how many frames per second to we ideally want to run
+#define MAX_LOAD_MA     	400	//how many mA are we allowed to draw, at 5 volts
 
-#define S_FIRE_COOLING  75	//How much does the air cool as it rises?
-#define S_FIRE_SPARKING 180	//What chance (out of 255) is there that a new spark will be lit?
+#define EFFECT_TIMEOUT_IN_USE	30000	//how long before we can change effects while in use
+#define EFFECT_TIMEOUT_IDLE	7000	//how long before we can change effects when the user is not giving input
+#define EFFECT_TIMEOUT_ATTRACT	60000	//how long before changing to a new attract mode
 
-#define S_DRIP_BLANK	true	//Do we blank every unused globe while dripping
+#define S_FIRE_COOLING  	75	//How much does the air cool as it rises?
+#define S_FIRE_SPARKING 	180	//What chance (out of 255) is there that a new spark will be lit?
+
+#define S_DRIP_BLANK		true	//Do we blank every unused globe while dripping
 
 unsigned long lastFrame;
 unsigned long lastCleanup;
 unsigned long frameCount;
 unsigned long sloshCount;
 unsigned long lastEffectChange;
+unsigned long lastUserInput;
 CRGB globes[GLOBE_COUNT];
 CRGB pixels[NUMPIXELS];
 
@@ -35,6 +40,7 @@ bool s_single_color = false;
 int drip_pos = 0;
 byte drip_scale = 0;
 bool drip_flip = false;
+bool inAttractMode = true;
 
 typedef enum {
   G_NOTOUCH,
@@ -95,6 +101,7 @@ void setup() {
   lastFrame = millis();
   lastCleanup = millis();
   lastEffectChange = millis();
+  lastUserInput = millis();
   frameCount = 0;
   sloshCount = 0;
   
@@ -396,25 +403,27 @@ void loop() {
   if ( (millis() - lastCleanup) > 1000 ) {
     //it's time to do our every-1s tasks.
 
-    if ( (millis() - lastEffectChange) > 60000 ) {
-      //it's time to change effects because we are idle.
-      sstate_t new_state = s;
-      g_color = s_color; g=G_COLOR; 
-      while ( new_state == s ) {
-        switch ( rand() % 3 ) { //n possible effects, 0 through n-1
-          case 0: s_single_color = false; s=S_SNAKE; break;
-          case 1: runGlobes(); s=S_DRIPBOW; g=G_STRIP; break;
-          case 2: s=S_FIRE; g=G_NOTOUCH; break;
-        }
+    if ( (millis() - lastUserInput) < EFFECT_TIMEOUT_ATTRACT ) { //user touched us within this time, normal effect
+      inAttractMode = false;
+      if ( ( (millis() - lastUserInput) > EFFECT_TIMEOUT_IDLE ) && ( (millis() - lastEffectChange) > EFFECT_TIMEOUT_IDLE ) ) { //user hasn't touched me for 7 seconds and my effect has run for 7 seconds
+        Serial.println("#Bored user effect change");
+        changePresetEffect();
+      } else if ( (millis() - lastEffectChange) > EFFECT_TIMEOUT_IN_USE ) { //user is constantly touching me for 30 seconds so I can't change effect by the previous rule
+        Serial.println("#Overstimulated user effect change");
+        changePresetEffect();
       }
-      lastEffectChange = millis();
+    } else if ( ((millis() - lastEffectChange) > EFFECT_TIMEOUT_ATTRACT) or (!inAttractMode) ) { //either we've been in attract for 60 seconds already, or it is just time to get to attract.
+      inAttractMode = true;
+      Serial.println("#Attract mode effect change");
+      changeAttractEffect();
     }
 
     double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
     Serial.print("#FRAME RATE: "); Serial.print(fr);
     Serial.print(" - SLOSH: "); Serial.print(sloshCount);
     uint32_t loadmw = calculate_unscaled_power_mW(pixels,NUMPIXELS);
-    Serial.print(" - LOAD: "); Serial.print(loadmw); Serial.print("mW ("); Serial.print(loadmw/5); Serial.println("mA)");
+    Serial.print(" - LOAD: "); Serial.print(loadmw); Serial.print("mW ("); Serial.print(loadmw/5); Serial.print("mA) - ");
+    Serial.print("Last user input "); Serial.print(millis() - lastUserInput); Serial.print(" - Last effect change "); Serial.println(millis() - lastEffectChange);
     
     lastCleanup = millis();
     frameCount = 0; sloshCount = 0;
@@ -484,12 +493,12 @@ void processControlStream(Stream &stream) {
     case 'I': s=S_FIRE; g=G_NOTOUCH; stream.read(); break;
     case 'W': s=S_DRIPBOW; g=G_STRIP; stream.read(); break; //drip on globes; rainbow on the rest
 
-    case '1': s_color = CRGB::Fuchsia; stream.read(); break;	//start on purple. if you don't keep up with me, you're finished
-    case '2': s_color = CRGB::Red; stream.read(); break;	//red
-    case '3': s_color = CRGB::Green; stream.read(); break;	//green
-    case '4': s_color = CRGB::Blue; stream.read(); break;	//blue
-    case '5': s_color = CRGB::Yellow; stream.read(); break;	//yellow
-    case '6': s_color = CRGB::OrangeRed; stream.read(); break;	//orange
+    case '1': handleUserInput(CRGB::Fuchsia); stream.read(); break;	//start on purple. if you don't keep up with me, you're finished
+    case '2': handleUserInput(CRGB::Red); stream.read(); break;	//red
+    case '3': handleUserInput(CRGB::Green); stream.read(); break;	//green
+    case '4': handleUserInput(CRGB::Blue); stream.read(); break;	//blue
+    case '5': handleUserInput(CRGB::Yellow); stream.read(); break;	//yellow
+    case '6': handleUserInput(CRGB::OrangeRed); stream.read(); break;	//orange
   
     case '<': softwareReset(); break;
     
@@ -499,16 +508,40 @@ void processControlStream(Stream &stream) {
 
 }
 
-void pickRandomColorEffect() {
-  switch (rand() % 4) {
-    case 0: s_single_color = true; s=S_SNAKE; break;
-    case 1: s=S_RAIN;
-    case 2: s=S_PAPARAZZI;
-    case 3: s=S_SPARKLE;
+void handleUserInput(CRGB c) {
+  s_color = c;
+  if ( ( (millis() - lastUserInput) > EFFECT_TIMEOUT_IDLE ) && ( (millis() - lastEffectChange) > EFFECT_TIMEOUT_IDLE ) ) { //user hasn't touched me for 7 seconds and my effect has run for 7 seconds
+    changePresetEffect();
   }
-  g_color=s_color; g=G_COLOR;
+  lastUserInput = millis(); //we just got user input
+}
+void changePresetEffect() {
+  g_color=s_color; //set the globe color to the same as the strip color
+  g=G_COLOR; //display that color on the globes
+  sstate_t new_state = s;
+  while ( s == new_state ) {
+    switch (rand() % 4) { //pick a new effect
+      case 0: s_single_color = true; s=S_SNAKE; break;
+      case 1: s=S_RAIN; break;
+      case 2: s=S_PAPARAZZI; break;
+      case 3: s=S_SPARKLE; break;
+    }
+  }
+  lastEffectChange = millis(); //we just set the effect
+}
+void changeAttractEffect() {
+  sstate_t new_state = s;
+  g_color = s_color; g=G_COLOR; 
+  while ( new_state == s ) {
+    switch ( rand() % 3 ) { //n possible effects, 0 through n-1
+      case 0: s_single_color = false; s=S_SNAKE; break;
+      case 1: runGlobes(); s_single_color = false; s=S_DRIPBOW; g=G_STRIP; break;
+      case 2: s=S_FIRE; g=G_NOTOUCH; break;
+    }
+  }
   lastEffectChange = millis();
 }
+
 
 CRGB getColorFromStream(Stream &stream) {
   //we have the 'c' character and the three color bytes.
