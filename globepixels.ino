@@ -5,7 +5,7 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION			32
+#define VERSION			33
 #define	NODEBUG				//define DEBUG to get debug output.
 
 #define PIN             	8
@@ -14,7 +14,8 @@
 #define GLOBE_SPACING   	10	//this minus GLOBE_SIZE equals the amount of LEDs between globes
 #define GLOBE_COUNT     	30	//just to save RAM - we should calculate this on the fly though
 #define FRAMERATE       	60	//how many frames per second to we ideally want to run
-#define MAX_LOAD_MA     	400	//how many mA are we allowed to draw, at 5 volts
+#define MAX_LOAD_MA     	2000	//how many mA are we allowed to draw, at 5 volts
+#define TEMPORAL_DITHERING	false	//use temporal dithering from FastLED
 
 #define EFFECT_TIMEOUT_IN_USE	30000	//how long before we can change effects while in use
 #define EFFECT_TIMEOUT_IDLE	7000	//how long before we can change effects when the user is not giving input
@@ -483,7 +484,11 @@ void loop() {
 
   } else {
     sloshCount++; //we didn't do anything so let's indicate that we had a spare mS.
-    FastLED.delay(1); //give it time to do temporal dithering
+    if ( TEMPORAL_DITHERING ) {
+      FastLED.delay(1); //give it time to do temporal dithering
+    } else {
+      delay(1); //or don't
+    }
   }
 
   processControlStream(Serial);
