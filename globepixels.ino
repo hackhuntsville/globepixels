@@ -5,7 +5,8 @@
   #include <avr/power.h>
 #endif
 
-#define VERSION			31
+#define VERSION			32
+#define	NODEBUG				//define DEBUG to get debug output.
 
 #define PIN             	8
 #define NUMPIXELS       	150
@@ -410,9 +411,11 @@ void runStrip() {
 }
 
 void handleWire(int count) {
+  #ifdef DEBUG
   Serial.print("#Got i2c (");
   Serial.print(count);
   Serial.println(" bytes)");
+  #endif /*DEBUG*/
 }
 
 void loop() {
@@ -423,24 +426,32 @@ void loop() {
     if ( (millis() - lastUserInput) < EFFECT_TIMEOUT_ATTRACT ) { //user touched us within this time, normal effect
       inAttractMode = false;
       if ( ( (millis() - lastUserInput) > EFFECT_TIMEOUT_IDLE ) && ( (millis() - lastEffectChange) > EFFECT_TIMEOUT_IDLE ) ) { //user hasn't touched me for 7 seconds and my effect has run for 7 seconds
-        Serial.println("#Bored user effect change");
+        #ifdef DEBUG
+	Serial.println("#Bored user effect change");
+	#endif /*DEBUG*/
         changePresetEffect();
       } else if ( (millis() - lastEffectChange) > EFFECT_TIMEOUT_IN_USE ) { //user is constantly touching me for 30 seconds so I can't change effect by the previous rule
-        Serial.println("#Overstimulated user effect change");
+        #ifdef DEBUG
+	Serial.println("#Overstimulated user effect change");
+	#endif /*DEBUG*/
         changePresetEffect();
       }
     } else if ( ((millis() - lastEffectChange) > EFFECT_TIMEOUT_ATTRACT) or (!inAttractMode) ) { //either we've been in attract for 60 seconds already, or it is just time to get to attract.
       inAttractMode = true;
+      #ifdef DEBUG
       Serial.println("#Attract mode effect change");
+      #endif /*DEBUG*/
       changeAttractEffect();
     }
 
+    #ifdef DEBUG
     double fr = (double)frameCount/((double)(millis()-lastCleanup)/1000);
     Serial.print("#FRAME RATE: "); Serial.print(fr);
     Serial.print(" - SLOSH: "); Serial.print(sloshCount);
     uint32_t loadmw = calculate_unscaled_power_mW(pixels,NUMPIXELS);
     Serial.print(" - LOAD: "); Serial.print(loadmw); Serial.print("mW ("); Serial.print(loadmw/5); Serial.print("mA) - ");
     Serial.print("Last user input "); Serial.print(millis() - lastUserInput); Serial.print(" - Last effect change "); Serial.println(millis() - lastEffectChange);
+    #endif /*DEBUG*/
     
     lastCleanup = millis();
     frameCount = 0; sloshCount = 0;
@@ -568,10 +579,13 @@ void changeAttractEffect() {
 CRGB getColorFromStream(Stream &stream) {
   //we have the 'c' character and the three color bytes.
   stream.read(); //throw away the 'c'
+  int r=stream.parseInt(); 
+  int g=stream.parseInt(); 
+  int b=stream.parseInt();
+  #ifdef DEBUG
   Serial.print("#Set color to ");
-  int r=stream.parseInt(); Serial.print(r); 
-  int g=stream.parseInt(); Serial.print(","); Serial.print(g); 
-  int b=stream.parseInt(); Serial.print(","); Serial.println(b);
+  Serial.print(r); Serial.print(","); Serial.print(g); Serial.print(","); Serial.println(b);
+  #endif /*DEBUG*/
   return CRGB(r,g,b);
 }
 
