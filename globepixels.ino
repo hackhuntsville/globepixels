@@ -8,7 +8,11 @@
 #define VERSION			33
 #define	NODEBUG				//define DEBUG to get debug output.
 
-#define PIN             	8
+#define PIN             	8	//neopixel
+
+#define DATA_PIN			D7	//apa102
+#define CLOCK_PIN			D5
+
 #define NUMPIXELS       	150
 #define GLOBE_SIZE      	2	//How many leds are inside of one globe
 #define GLOBE_SPACING   	10	//this minus GLOBE_SIZE equals the amount of LEDs between globes
@@ -25,6 +29,23 @@
 #define S_FIRE_SPARKING 	180	//What chance (out of 255) is there that a new spark will be lit?
 
 #define S_DRIP_BLANK		true	//Do we blank every unused globe while dripping
+
+void runG_VERSION();
+void writeGlobes();
+CRGB wheelForPos(int x);
+CRGB wheelForPos(int x, int offset);
+void runS_BLANK();
+void runS_FADE();
+void changePresetEffect();
+void changeAttractEffect();
+void processControlStream(Stream &stream);
+CRGB getColorFromStream(Stream &stream);
+void handleUserInput(CRGB c);
+void softwareReset();
+CRGB Wheel(byte WheelPos);
+uint8_t Red(uint32_t color);
+uint8_t Green(uint32_t color);
+uint8_t Blue(uint32_t color);
 
 unsigned long lastFrame;
 unsigned long lastCleanup;
@@ -73,6 +94,14 @@ typedef enum {
 sstate_t s = S_NOTOUCH;
 #define S_SNAKE_LENGTH 15
 
+void handleWire(int count) {
+  #ifdef DEBUG
+  Serial.print("#Got i2c (");
+  Serial.print(count);
+  Serial.println(" bytes)");
+  #endif /*DEBUG*/
+}
+
 void setup() {
 
   pinMode(13, OUTPUT); 
@@ -83,7 +112,8 @@ void setup() {
   Serial.println("#serial up");
   Serial.print("#GLOBEPIXELS version "); Serial.println(VERSION);
 
-  FastLED.addLeds<NEOPIXEL, PIN>(pixels, NUMPIXELS);
+  //FastLED.addLeds<NEOPIXEL, PIN>(pixels, NUMPIXELS);
+  FastLED.addLeds<APA102, DATA_PIN, CLOCK_PIN, BGR>(pixels, NUMPIXELS);
   set_max_power_in_volts_and_milliamps(5,MAX_LOAD_MA); //assuming 5 volts
   set_max_power_indicator_LED(13); //blink led 13 when would've overdrawn
   FastLED.setCorrection(TypicalSMD5050);
@@ -411,14 +441,6 @@ void runStrip() {
   }
 }
 
-void handleWire(int count) {
-  #ifdef DEBUG
-  Serial.print("#Got i2c (");
-  Serial.print(count);
-  Serial.println(" bytes)");
-  #endif /*DEBUG*/
-}
-
 void loop() {
 
   if ( (millis() - lastCleanup) > 1000 ) {
@@ -661,5 +683,6 @@ uint8_t Blue(uint32_t color)
 void softwareReset() { // Restarts program from beginning but does not reset the peripherals and registers
   asm volatile ("  jmp 0");  
 } 
+
 
 
