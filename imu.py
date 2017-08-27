@@ -45,13 +45,13 @@ def timer():
         elif x < -15000:
             new_color = "yellow"
         elif z > 15000:
-            new_color = "red"
-        elif z < -15000:
-            new_color = "purple"
-        elif y > 15000:
             new_color = "blue"
-        elif y < -15000:
+        elif z < -15000:
             new_color = "green"
+        elif y > 15000:
+            new_color = "purple"
+        elif y < -15000:
+            new_color = "red"
         else:
             return
 
