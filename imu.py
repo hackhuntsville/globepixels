@@ -14,7 +14,7 @@ init_done = False
 def setup():
     setPinDir(17, True)
     writePin(17, False)
-    init_imu(27, 29)
+    init_imu(7,6)
 
 def get_color():
     return current_color
