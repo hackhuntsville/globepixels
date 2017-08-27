@@ -2,7 +2,7 @@ from snappy_mpu6050 import *
 
 MAX_STEADY = 6
 MAX_DEDUPE = 3
-STARTUP_DELAY = 0
+STARTUP_DELAY = 10
 
 dedupe_count = MAX_STEADY
 current_color = "purple"
